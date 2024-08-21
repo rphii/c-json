@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <assert.h>
 
+#define ERR_LUTS_ADD    "failed adding value to lookup table"
+
 #define LUTS_ITEM_BY_VAL(T)             T
 #define LUTS_ITEM_BY_REF(T)             T *
 #define LUTS_ITEM(T, M)                 LUTS_ITEM_##M(T)
@@ -55,9 +57,10 @@
     \
     void A##_free(N *lut); \
     int A##_grow(N *lut, size_t width); \
-    int A##_set(N *lut, LUTS_ITEM(TK, MK) key, LUTS_ITEM(TV, MV) val); \
-    TV *A##_get(N *lut, LUTS_ITEM(TK, MK) key); \
-    void A##_del(N *lut, LUTS_ITEM(TK, MK) key); \
+    int A##_set(N *lut, const LUTS_ITEM(TK, MK) key, LUTS_ITEM(TV, MV) val); \
+    TV *A##_get(N *lut, const LUTS_ITEM(TK, MK) key); \
+    void A##_del(N *lut, const LUTS_ITEM(TK, MK) key); \
+    void A##_clear(N *lut); \
 
 #define LUTS_IMPLEMENT(N, A, TK, MK, TV, MV, H, C, FK, FV)   \
     LUTS_IMPLEMENT_COMMON_STATIC_GET_ITEM(N, A, TK, MK, TV, MV, H, C, FK, FV) \
@@ -67,7 +70,7 @@
     LUTS_IMPLEMENT_COMMON_GET(N, A, TK, MK, TV, MV, H, C, FK, FV) \
 
 #define LUTS_IMPLEMENT_COMMON_STATIC_GET_ITEM(N, A, TK, MK, TV, MV, H, C, FK, FV) \
-    static N##Item **A##_static_get_item(N *lut, LUTS_ITEM(TK, MK) key, size_t hash, bool intend_to_set) { \
+    static N##Item **A##_static_get_item(N *lut, const LUTS_ITEM(TK, MK) key, size_t hash, bool intend_to_set) { \
         LUTS_ASSERT_ARG(lut); \
         LUTS_ASSERT_ARG_M(key, MK); \
         size_t perturb = hash >> 5; \
@@ -142,7 +145,7 @@
     }
 
 #define LUTS_IMPLEMENT_COMMON_SET(N, A, TK, MK, TV, MV, H, C, FK, FV) \
-    int A##_set(N *lut, LUTS_ITEM(TK, MK) key, LUTS_ITEM(TV, MV) val) { \
+    int A##_set(N *lut, const LUTS_ITEM(TK, MK) key, LUTS_ITEM(TV, MV) val) { \
         LUTS_ASSERT_ARG(lut); \
         LUTS_ASSERT_ARG_M(key, MK); \
         if(2 * lut->used >= LUTS_CAP(lut->width)) { \
@@ -183,7 +186,7 @@
     }
 
 #define LUTS_IMPLEMENT_COMMON_GET(N, A, TK, MK, TV, MV, H, C, FK, FV) \
-    TV *A##_get(N *lut, LUTS_ITEM(TK, MK) key) { \
+    TV *A##_get(N *lut, const LUTS_ITEM(TK, MK) key) { \
         LUTS_ASSERT_ARG(lut); \
         LUTS_ASSERT_ARG_M(key, MK); \
         size_t hash = H(key); \
@@ -192,7 +195,7 @@
     }
 
 #define LUTS_IMPLEMENT_COMMON_DEL(N, A, TK, MK, TV, MV, H, C, FK, FV) \
-    void A##_del(N *lut, LUTS_ITEM(TK, MK) key) { \
+    void A##_del(N *lut, const LUTS_ITEM(TK, MK) key) { \
         LUTS_ASSERT_ARG(lut); \
         LUTS_ASSERT_ARG_M(key, TK); \
         size_t hash = H(key); \
@@ -204,6 +207,15 @@
         } \
     }
 
+#define LUTS_IMPLEMENT_COMMON_CLEAR(N, A, TK, MK, TV, MV, H, C, FK, FV) \
+    void A##_clear(N *lut) { \
+        LUTS_ASSERT_ARG(lut); \
+        for(size_t i = 0; i < LUTS_CAP(lut->width); ++i) { \
+            N##Item *item = lut->buckets[i]; \
+            if(!item) continue; \
+            item->hash = LUT_EMPTY; \
+        } \
+    }
 
 
 #define LUTS_H
