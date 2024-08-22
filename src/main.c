@@ -64,10 +64,10 @@ int main(int argc, const char **argv)
     Str in = {0};
     Str out = {0};
 
-#if 0
+#if 1
     //Str filename = STR("../data/sample.json");
     //Str filename = STR("../data/512KB.json");
-    //Str filename = STR("../data/5MB-min.json");
+    Str filename = STR("../data/5MB-min.json");
     
     TRYC(file_str_read(&filename, &in));
     Json json = {0};
@@ -108,7 +108,7 @@ int main(int argc, const char **argv)
     };
 #endif
 
-#if 1
+#if 0
     Str filename = {0};
     size_t index = 0;
     for(size_t i = 1; i <= 24; ++i) {

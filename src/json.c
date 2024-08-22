@@ -4,13 +4,20 @@
 #include <ctype.h>
 #include <errno.h>
 
+VEC_INCLUDE(VrJson, vrjson, Json, BY_REF);
+VEC_IMPLEMENT(VrJson, vrjson, Json, BY_REF, 0);
+
 VEC_IMPLEMENT(VJson, vjson, Json, BY_REF, json_free);
 LUTS_IMPLEMENT(TJson, tjson, Str, BY_REF, Json, BY_REF, str_hash, str_cmp, str_free, json_free);
 
-#define ERR_static_json_parse_val(...) "failed parsing json value"
-ErrDeclStatic static_json_parse_val(Json *json, Str *str);
 
-void json_free(Json *json)
+#define ERR_static_json_parse_val(...) "failed parsing json value"
+ErrImplStatic static_json_parse_val(Json *json, Str *str);
+
+void static_json_parse_skip_ws(Str *str);
+JsonList static_json_parse_detect(Json *json, Str *str);
+
+inline void json_free(Json *json)
 {
     switch(json->id) {
         case JSON_ARR: {
@@ -27,7 +34,7 @@ void json_free(Json *json)
     memset(json, 0, sizeof(*json));
 }
 
-ErrDecl vjson_fmt(VJson *vjson, Str *str, JsonOptions *options)
+ErrImpl vjson_fmt(VJson *vjson, Str *str, JsonOptions *options)
 {
     ASSERT_ARG(vjson);
     ASSERT_ARG(str);
@@ -55,7 +62,7 @@ error:
     return -1;
 }
 
-ErrDecl tjson_fmt(TJson *tjson, Str *str, JsonOptions *options)
+ErrImpl tjson_fmt(TJson *tjson, Str *str, JsonOptions *options)
 {
     ASSERT_ARG(tjson);
     ASSERT_ARG(str);
@@ -83,7 +90,7 @@ error:
     return -1;
 }
 
-JsonOptions json_options_default(void)
+inline JsonOptions json_options_default(void)
 {
     JsonOptions options = {
         .fmt.tabs = JSON_OPTIONS_TABS,
@@ -91,7 +98,7 @@ JsonOptions json_options_default(void)
     return options;
 }
 
-ErrDecl json_fmt(Json *json, Str *str, JsonOptions *options, Str *path)
+ErrImpl json_fmt(Json *json, Str *str, JsonOptions *options, Str *path)
 {
     ASSERT_ARG(json);
     ASSERT_ARG(str);
@@ -134,7 +141,7 @@ error:
     return -1;
 }
 
-void static_json_parse_skip_ws(Str *str)
+inline void static_json_parse_skip_ws(Str *str)
 {
     while(str_length(str) && isspace(str_get_front(str))) {
         ++str->first;
@@ -142,7 +149,7 @@ void static_json_parse_skip_ws(Str *str)
 }
 
 #define ERR_static_json_parse_detect(...) "failed detection of next value"
-JsonList static_json_parse_detect(Json *json, Str *str)
+inline JsonList static_json_parse_detect(Json *json, Str *str)
 {
     ASSERT_ARG(json);
     ASSERT_ARG(str);
@@ -171,7 +178,7 @@ JsonList static_json_parse_detect(Json *json, Str *str)
 }
 
 #define ERR_static_json_parse_single_char(str, c) "failed parsing single character '%c'", c
-ErrDeclStatic static_json_parse_single_char(Str *str, char c)
+ErrImplStatic static_json_parse_single_char(Str *str, char c)
 {
     /* verify begin */
     if(!(str_length(str) && str_get_front(str) == c)) {
@@ -183,7 +190,7 @@ ErrDeclStatic static_json_parse_single_char(Str *str, char c)
     
 
 #define ERR_static_json_parse_arr(...) "failed parsing json array"
-ErrDeclStatic static_json_parse_arr(Json *json, Str *str)
+ErrImplStatic static_json_parse_arr(Json *json, Str *str)
 {
     ASSERT_ARG(json);
     ASSERT_ARG(str);
@@ -213,7 +220,7 @@ error:
 }
 
 #define ERR_static_json_parse_str(...) "failed parsing json string"
-ErrDeclStatic static_json_parse_str(Str *value, Str *str)
+ErrImplStatic static_json_parse_str(Str *value, Str *str)
 {
     ASSERT_ARG(value);
     ASSERT_ARG(str);
@@ -283,7 +290,7 @@ error:
 }
 
 #define ERR_static_json_parse_obj(...) "failed parsing json object"
-ErrDeclStatic static_json_parse_obj(Json *json, Str *str)
+ErrImplStatic static_json_parse_obj(Json *json, Str *str)
 {
     ASSERT_ARG(json);
     ASSERT_ARG(str);
@@ -327,7 +334,7 @@ error:
 }
 
 #define ERR_static_json_parse_num(...) "failed parsing json num"
-ErrDeclStatic static_json_parse_num(Json *json, Str *str)
+ErrImplStatic static_json_parse_num(Json *json, Str *str)
 {
     ASSERT_ARG(json);
     ASSERT_ARG(str);
@@ -354,6 +361,16 @@ ErrDeclStatic static_json_parse_num(Json *json, Str *str)
     /* get number */
     if(is_float) {
         char *endptr = 0;
+        errno = 0;
+        double f = strtod(str_iter_begin(str), &endptr); // TODO: not really quite official json
+        if(errno) {
+            THROW("strtod() failed: %s", strerror(errno));
+        }
+        json->id = JSON_FLOAT;
+        json->f = f;
+        str->first += (endptr - str_iter_begin(str));
+        return 0;
+#if 0
         char cstr[256];
         str_cstr(str, cstr, 256);
         errno = 0;
@@ -365,8 +382,19 @@ ErrDeclStatic static_json_parse_num(Json *json, Str *str)
         json->f = f;
         str->first += (endptr - cstr);
         return 0;
+#endif
     } else {
         char *endptr = 0;
+        errno = 0;
+        int i = strtol(str_iter_begin(str), &endptr, 0); // TODO: not really quite official json
+        if(errno) {
+            THROW("strtol() failed: %s", strerror(errno));
+        }
+        json->id = JSON_INT;
+        json->i = i;
+        str->first += (endptr - str_iter_begin(str));
+        return 0;
+#if 0
         char cstr[256];
         str_cstr(str, cstr, 256);
         errno = 0;
@@ -378,6 +406,7 @@ ErrDeclStatic static_json_parse_num(Json *json, Str *str)
         json->i = i;
         str->first += (endptr - cstr);
         return 0;
+#endif
     }
     THROW("couldn't parse number");
 error:
@@ -385,7 +414,7 @@ error:
 }
 
 #define ERR_static_json_parse_bool(...) "failed parsing json bool"
-ErrDeclStatic static_json_parse_bool(Json *json, Str *str)
+ErrImplStatic static_json_parse_bool(Json *json, Str *str)
 {
     ASSERT_ARG(json);
     ASSERT_ARG(str);
@@ -409,7 +438,7 @@ error:
 }
 
 #define ERR_static_json_parse_null(...) "failed parsing json null"
-ErrDeclStatic static_json_parse_null(Json *json, Str *str)
+ErrImplStatic static_json_parse_null(Json *json, Str *str)
 {
     ASSERT_ARG(json);
     ASSERT_ARG(str);
@@ -424,7 +453,7 @@ error:
     return -1;
 }
 
-ErrDeclStatic static_json_parse_val(Json *json, Str *str)
+ErrImplStatic static_json_parse_val(Json *json, Str *str)
 {
     ASSERT_ARG(json);
     ASSERT_ARG(str);
@@ -463,7 +492,7 @@ error:
     return -1;
 }
 
-ErrDecl json_parse(Json *json, Str *str, JsonOptions *options, Str *path)
+ErrImpl json_parse(Json *json, Str *str, JsonOptions *options, Str *path)
 {
     ASSERT_ARG(json);
     ASSERT_ARG(str);
@@ -485,7 +514,7 @@ error:
     return -1;
 }
 
-ErrDecl json_get(Json *json, Json *out, JsonPath *path)
+ErrImpl json_get(Json *json, Json *out, JsonPath *path)
 {
     ASSERT_ARG(json);
     ASSERT_ARG(out);
@@ -497,14 +526,7 @@ ErrDecl json_get(Json *json, Json *out, JsonPath *path)
     for(size_t i = 0; i < path->n; ++i) {
         switch(result->id) {
             case JSON_OBJ: {
-#if 1
                 result = tjson_get(&result->obj, &path->p[i].k);
-#else
-                JsonKeyVal search = { .key = path->p[i].k };
-                size_t ii, jj;
-                TRY(tjson_find(&result->obj, &search, &ii, &jj), ERR_LUTD_FIND " '%.*s'", STR_F(&search.key));
-                result = &result->obj.buckets[ii].items[jj]->val;
-#endif
             } break;
             case JSON_ARR: {
                 result = vjson_get_at(&result->arr, path->p[i].i);
