@@ -5,32 +5,10 @@
 #include <errno.h>
 
 VEC_IMPLEMENT(VJson, vjson, Json, BY_REF, json_free);
-//LUTD_IMPLEMENT(TJson, tjson, JsonKeyVal, BY_REF, json_key_val_hash, json_key_val_cmp, json_key_val_free);
 LUTS_IMPLEMENT(TJson, tjson, Str, BY_REF, Json, BY_REF, str_hash, str_cmp, str_free, json_free);
 
 #define ERR_static_json_parse_val(...) "failed parsing json value"
 ErrDeclStatic static_json_parse_val(Json *json, Str *str);
-
-int json_key_val_cmp(const JsonKeyVal *a, const JsonKeyVal *b)
-{
-    ASSERT_ARG(a);
-    ASSERT_ARG(b);
-    int result = str_cmp(&a->key, &b->key);
-    return result;
-}
-
-size_t json_key_val_hash(const JsonKeyVal *json)
-{
-    ASSERT_ARG(json);
-    size_t hash = str_hash(&json->key);
-    return hash;
-}
-
-void json_key_val_free(JsonKeyVal *json)
-{
-    str_free(&json->key);
-    json_free(&json->val);
-}
 
 void json_free(Json *json)
 {
@@ -87,7 +65,6 @@ ErrDecl tjson_fmt(TJson *tjson, Str *str, JsonOptions *options)
     options->fmt.spacing += options->fmt.tabs;
     /* format object */
     bool first = true;
-#if 1
     for(size_t ii = 0; ii < LUTS_CAP(tjson->width); ++ii) {
         TJsonItem *jsonkv = tjson->buckets[ii];
         if(!jsonkv) continue;
@@ -98,19 +75,6 @@ ErrDecl tjson_fmt(TJson *tjson, Str *str, JsonOptions *options)
         TRYC(json_fmt(jsonkv->val, str, options, 0));
         first = false;
     }
-#else
-    for(size_t ii = 0; ii < (1ULL << (tjson->width - 1)); ++ii) {
-        for(size_t jj = 0; jj < tjson->buckets[ii].len; ++jj) {
-            if(!first) {
-                TRYC(str_fmt(str, ",\n"));
-            }
-            JsonKeyVal *jsonkv = tjson->buckets[ii].items[jj];
-            TRYC(str_fmt(str, "%*s\"%.*s\": ", options->fmt.spacing, "", STR_F(&jsonkv->key)));
-            TRYC(json_fmt(&jsonkv->val, str, options, 0));
-            first = false;
-        }
-    }
-#endif
     /* spacing & end of object */
     options->fmt.spacing -= options->fmt.tabs;
     TRYC(str_fmt(str, "\n%*s}", options->fmt.spacing, ""));
@@ -328,7 +292,6 @@ ErrDeclStatic static_json_parse_obj(Json *json, Str *str)
     /* create string */
     json->id = JSON_OBJ;
     for(;;) {
-#if 1
         Str key = {0};
         Json val = {0};
         /* parse string */
@@ -348,23 +311,6 @@ ErrDeclStatic static_json_parse_obj(Json *json, Str *str)
             //printff("  set [%.*s]", STR_F(&key));
             TRY(tjson_set(&json->obj, &key, &val), ERR_LUTD_ADD);
             //printff("  ... ok");
-#else
-        JsonKeyVal jsonkv = {0};
-        /* parse string */
-        static_json_parse_skip_ws(str);
-        TRYC(static_json_parse_str(&jsonkv.key, str));
-        /* parse colon */
-        static_json_parse_skip_ws(str);
-        TRYC(static_json_parse_single_char(str, ':'));
-        /* parse value */
-        TRYC(static_json_parse_val(&jsonkv.val, str));
-        if(!json->obj.width) {
-            TRY(tjson_init(&json->obj, 8), ERR_LUTD_INIT);
-        }
-        if(jsonkv.val.id) {
-            TRY(tjson_add(&json->obj, &jsonkv), ERR_LUTD_ADD);
-            //TRY(vjson_push_back(&json->arr, &&jsonkv.val), ERR_VEC_PUSH_BACK);
-#endif
         }
         /* check for next value */
         static_json_parse_skip_ws(str);

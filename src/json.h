@@ -19,14 +19,9 @@ typedef enum {
 } JsonList;
 
 typedef struct Json Json;
-typedef struct TJson TJson;
-typedef struct JsonKeyVal JsonKeyVal;
 
 VEC_INCLUDE(VJson, vjson, Json, BY_REF);
 LUTS_INCLUDE(TJson, tjson, Str, BY_REF, Json, BY_REF);
-
-//VEC_INCLUDE(TJson, vjson, TJson, BY_REF);
-//LUTD_INCLUDE(TJson, tjson, JsonKeyVal, BY_REF);
 
 typedef struct Json {
     JsonList id;
@@ -39,11 +34,6 @@ typedef struct Json {
         double f;
     };
 } Json;
-
-typedef struct JsonKeyVal {
-    Str key;
-    Json val;
-} JsonKeyVal;
 
 typedef union JsonPathlet {
     Str k;
@@ -66,17 +56,11 @@ typedef struct JsonOptions {
         bool sort_object;
         bool compact; // TODO rename/add_newlines???
     } fmt;
-    //struct {
-    //} x; // internal struct
 } JsonOptions;
  
 #define JSON_OPTIONS_TABS   (2)
 
 JsonOptions json_options_default(void);
-
-int json_key_val_cmp(const JsonKeyVal *a, const JsonKeyVal *b);
-size_t json_key_val_hash(const JsonKeyVal *json);
-void json_key_val_free(JsonKeyVal *json);
 
 void json_sort(Json *json);
 void vjson_sort(VJson *vjson);
@@ -95,7 +79,6 @@ ErrDecl json_parse(Json *json, Str *str, JsonOptions *options, Str *path);
 
 #define ERR_json_get(...) "failed getting json path"
 ErrDecl json_get(Json *json, Json *out, JsonPath *path);
-//Json json_get(Json *json, Str *path);
 
 ErrDecl json_set_str(Json *json, bool val, Str *path);
 ErrDecl json_set_obj(Json *json, Json , Str *path);
