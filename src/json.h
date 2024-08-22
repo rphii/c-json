@@ -48,6 +48,7 @@ typedef struct JsonPath {
 typedef struct JsonOptions {
     struct {
         bool sort_array;
+        bool readonly;
     } parse;
     struct {
         int tabs;
@@ -78,7 +79,7 @@ ErrDecl json_fmt(Json *json, Str *str, JsonOptions *options, Str *path);
 ErrDecl json_parse(Json *json, Str *str, JsonOptions *options, Str *path);
 
 #define ERR_json_get(...) "failed getting json path"
-ErrDecl json_get(Json *json, Json *out, JsonPath *path);
+Json json_get(Json *json, JsonPath *path);
 
 ErrDecl json_set_str(Json *json, bool val, Str *path);
 ErrDecl json_set_obj(Json *json, Json , Str *path);

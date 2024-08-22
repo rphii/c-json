@@ -28,8 +28,7 @@ ErrDecl list_urls(Str *filename, Str *in, Str *out, size_t *index)
             }
     };
 
-    Json data = {0};
-    TRYC(json_get(&json, &data, &path_data));
+    Json data = json_get(&json, &path_data);
     for(size_t i = 0; i < vjson_length(&data.arr); ++i) {
 
         JsonPath path_url = (JsonPath){
@@ -39,8 +38,7 @@ ErrDecl list_urls(Str *filename, Str *in, Str *out, size_t *index)
                     (JsonPathlet){.k = STR("short_url")},
                 }
         };
-        Json url = {0};
-        TRYC(json_get(&data, &url, &path_url));
+        Json url = json_get(&data, &path_url);
         
         //TRYC(json_fmt(&portion, &out, 0, 0));
         TRYC(str_fmt(out, "[%zu] ", (*index)++));
@@ -64,17 +62,51 @@ int main(int argc, const char **argv)
     Str in = {0};
     Str out = {0};
 
-#if 1
-    //Str filename = STR("../data/sample.json");
-    //Str filename = STR("../data/512KB.json");
-    Str filename = STR("../data/5MB-min.json");
-    
-    TRYC(file_str_read(&filename, &in));
+#if 0
     Json json = {0};
-    TRYC(json_parse(&json, &in, 0, 0));
+    TRYC(json_parse(&json, &STR("[]"), 0, 0));
     TRYC(json_fmt(&json, &out, 0, 0));
     printf("%.*s\n", STR_F(&out));
     json_free(&json);
+#endif
+
+#if 1
+    //Str filename = STR("../data/sample.json");
+    //Str filename = STR("../data/512KB.json");
+    //Str filename = STR("../data/5MB-min.json");
+    //Str filename = STR("../testfiles/instruments.json");
+
+    Str files[] = {
+        STR("../testfiles/apache_builds.json"),
+        STR("../testfiles/canada.json"),
+        STR("../testfiles/citm_catalog.json"),
+        STR("../testfiles/github_events.json"),
+        STR("../testfiles/gsoc-2018.json"),
+        STR("../testfiles/instruments.json"),
+        STR("../testfiles/marine_ik.json"),
+        STR("../testfiles/mesh.json"),
+        STR("../testfiles/mesh.pretty.json"),
+        STR("../testfiles/numbers.json"),
+        STR("../testfiles/random.json"),
+        STR("../testfiles/twitter.json"),
+        STR("../testfiles/twitterescaped.json"),
+        STR("../testfiles/update-center.json"),
+    };
+    
+    for(size_t i = 0; i < SIZE_ARRAY(files); ++i) {
+        str_clear(&in);
+        printff("%.*s", STR_F(&files[i]));
+        TRYC(file_str_read(&files[i], &in));
+        Json json = {0};
+        TRYC(json_parse(&json, &in, 0, 0));
+        //TRYC(json_fmt(&json, &out, 0, 0));
+        //printf("%.*s\n", STR_F(&out));
+        json_free(&json);
+
+    }
+    //TRYC(file_str_read(&filename, &in));
+    //TRYC(json_fmt(&json, &out, 0, 0));
+    //printf("%.*s\n", STR_F(&out));
 #endif
 
 #if 0
@@ -89,23 +121,24 @@ int main(int argc, const char **argv)
                 &(Json){.id = JSON_BOOL, .b = true},
                 &(Json){.id = JSON_STR, .str = STR("hello, world!")},
                 &(Json){.id = JSON_OBJ, .obj = (TJson){
-                    .width = 1,
-                    .buckets = (TJsonBucket []){
-                        (TJsonBucket){.len = 2, .items = (JsonKeyVal *[]){
-                            &(JsonKeyVal){
-                                .key = STR("user"),
-                                .val = (Json){.id = JSON_STR, .str = STR("coder")},
-                            },
-                            &(JsonKeyVal){
-                                .key = STR("age"),
-                                .val = (Json){.id = JSON_INT, .i = 23},
-                            },
-                        }},
+                    .width = 0xFF, .used = 2,
+                    .buckets = (TJsonItem *[]){
+                        &(TJsonItem){
+                            .key = &STR("user"),
+                            .val = &(Json){.id = JSON_STR, .str = STR("coder")},
+                        },
+                        &(TJsonItem){
+                            .key = &STR("age"),
+                            .val = &(Json){.id = JSON_INT, .i = 23},
+                        },
                     },
                 }},
             },
         },
     };
+    TRYC(json_fmt(&json, &out, 0, 0));
+    printf("%.*s\n", STR_F(&out));
+
 #endif
 
 #if 0
