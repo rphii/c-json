@@ -32,11 +32,8 @@ VEC_INCLUDE(Str, str, char, BY_VAL);
 #define STR_I0(str, i0)         (const Str){.s = (str).s, .first = ((str).first + i0 < (str).last) ? (str).first + i0 : (str).last, .last = (str).last}
 #define STR_IE(str, iE)         (const Str){.s = (str).s, .first = (str).first, .last = (str).first + iE}
 
-#define ERR_STR_CAT_BACK    "failed appending string to other string"
-#define ERR_STR_FMT         "failed string formatting"
-#define ERR_STR_COPY        "failed copying string"
-
-#define ERR_str_copy(v1, v2) "failed copying string"
+#define ERR_str_extend_back(...)    "failed appending string to other string"
+#define ERR_str_copy(...)           "failed copying string"
 
 /* other functions */
 

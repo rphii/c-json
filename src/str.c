@@ -248,7 +248,7 @@ int str_get_str(Str *str) //{{{
     int err = 0;
     int c = 0;
     while((c = getchar()) != '\n' && c != EOF) {
-        TRY(str_fmt(str, "%c", (char)c), ERR_STR_FMT);  /* append string */
+        TRYC(str_fmt(str, "%c", (char)c));  /* append string */
     }
     if(!str->last && (!c || c == EOF || c == '\n')) {
         //THROW("an error"); /* TODO describe this error */
@@ -800,7 +800,7 @@ ErrDecl str_remove_escapes(Str *restrict out, Str *restrict in)
         char c = str_get_at(in, i);
         if(!skip) {
             if(c == '\033') {
-                TRY(str_fmt(out, "%.*s", (int)(i - iX), str_iter_at(in, iX)), ERR_STR_FMT);
+                TRYC(str_fmt(out, "%.*s", (int)(i - iX), str_iter_at(in, iX)));
                 skip = true;
 #if 0
             } else if(c == '\'') {
@@ -808,7 +808,7 @@ ErrDecl str_remove_escapes(Str *restrict out, Str *restrict in)
                 iX = i + 1;
 #endif
             } else if(!isspace(c_last) && isspace(c)) {
-                TRY(str_fmt(out, "%.*s ", (int)(i - iX), str_iter_at(in, iX)), ERR_STR_FMT);
+                TRYC(str_fmt(out, "%.*s ", (int)(i - iX), str_iter_at(in, iX)));
                 iX = i + 1;
             } else if(isspace(c_last) && isspace(c)) {
                 iX = i + 1;
@@ -822,7 +822,7 @@ ErrDecl str_remove_escapes(Str *restrict out, Str *restrict in)
         }
     }
     if(!skip) {
-        TRY(str_fmt(out, "%.*s", (int)(str_length(in) - iX), str_iter_at(in, iX)), ERR_STR_FMT);
+        TRYC(str_fmt(out, "%.*s", (int)(str_length(in) - iX), str_iter_at(in, iX)));
     }
     return 0;
 error:

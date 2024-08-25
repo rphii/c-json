@@ -8,6 +8,17 @@ VEC_INCLUDE(VrJson, vrjson, Json, BY_REF);
 VEC_IMPLEMENT(VrJson, vrjson, Json, BY_REF, 0);
 
 VEC_IMPLEMENT(VJson, vjson, Json, BY_REF, json_free);
+
+size_t str_hash2(Str s) {
+    return str_hash(&s);
+}
+int str_cmp2(Str a, Str b) {
+    return str_cmp(&a, &b);
+}
+void str_free2(Str s) {
+    str_free(&s);
+}
+
 LUTS_IMPLEMENT(TJson, tjson, Str, BY_REF, Json, BY_REF, str_hash, str_cmp, str_free, json_free);
 
 
@@ -77,6 +88,7 @@ ErrImpl tjson_fmt(TJson *tjson, Str *str, JsonOptions *options)
         TJsonItem *jsonkv = tjson->buckets[ii];
         if(n >= tjson->used) break;
         if(!jsonkv) continue;
+        if(jsonkv->hash == LUTS_EMPTY) continue;
         if(!first) {
             TRYC(str_fmt(str, ",\n"));
         }
@@ -272,7 +284,8 @@ ErrImplStatic static_json_parse_str(Str *value, Str *str)
             if(c == '\\') {
                 /* TODO: DRY vvvv */
                 if(str_length(&pending)) {
-                    TRYC(str_fmt(&val, "%.*s", STR_F(&pending)));
+                    //TRYC(str_fmt(&val, "%.*s", STR_F(&pending)));
+                    TRYC(str_extend_back(&val, &pending));
                     pending.first = pending.last;
                 }
                 /* TODO: DRY ^^^^ */
@@ -280,7 +293,8 @@ ErrImplStatic static_json_parse_str(Str *value, Str *str)
             } else if(c == '"') {
                 /* TODO: DRY vvvv */
                 if(str_length(&pending)) {
-                    TRYC(str_fmt(&val, "%.*s", STR_F(&pending)));
+                    //TRYC(str_fmt(&val, "%.*s", STR_F(&pending)));
+                    TRYC(str_extend_back(&val, &pending));
                     pending.first = pending.last;
                 }
                 /* TODO: DRY ^^^^ */
@@ -516,22 +530,22 @@ Json json_get(Json *json, JsonPath *path)
     ASSERT_ARG(json);
     ASSERT_ARG(path); // -> if no path just ..return 0 if a valid json all in all lol
 
-    Json input = *json;
-    Json *result = &input;
+    Json result = *json;
 
     for(size_t i = 0; i < path->n; ++i) {
-        switch(result->id) {
+        switch(result.id) {
             case JSON_OBJ: {
-                result = tjson_get(&result->obj, &path->p[i].k);
+                result = *tjson_get(&result.obj, &path->p[i].k);
             } break;
             case JSON_ARR: {
-                result = vjson_get_at(&result->arr, path->p[i].i);
+                result = *vjson_get_at(&result.arr, path->p[i].i);
             } break;
             default: {
+                result = (Json){.id = JSON_NONE};
             } break;
         }
     }
-    return *result;
+    return result;
 }
 
 

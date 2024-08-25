@@ -68,6 +68,7 @@
     LUTS_IMPLEMENT_COMMON_GROW(N, A, TK, MK, TV, MV, H, C, FK, FV) \
     LUTS_IMPLEMENT_COMMON_SET(N, A, TK, MK, TV, MV, H, C, FK, FV) \
     LUTS_IMPLEMENT_COMMON_GET(N, A, TK, MK, TV, MV, H, C, FK, FV) \
+    LUTS_IMPLEMENT_COMMON_DEL(N, A, TK, MK, TV, MV, H, C, FK, FV) \
 
 #define LUTS_IMPLEMENT_COMMON_STATIC_GET_ITEM(N, A, TK, MK, TV, MV, H, C, FK, FV) \
     static N##Item **A##_static_get_item(N *lut, const LUTS_ITEM(TK, MK) key, size_t hash, bool intend_to_set) { \
@@ -197,13 +198,13 @@
 #define LUTS_IMPLEMENT_COMMON_DEL(N, A, TK, MK, TV, MV, H, C, FK, FV) \
     void A##_del(N *lut, const LUTS_ITEM(TK, MK) key) { \
         LUTS_ASSERT_ARG(lut); \
-        LUTS_ASSERT_ARG_M(key, TK); \
+        LUTS_ASSERT_ARG_M(key, MK); \
         size_t hash = H(key); \
         N##Item *item = *A##_static_get_item(lut, key, hash, true); \
         if(item) { \
             item->hash = LUTS_EMPTY; \
-            if(FK != 0) LUTS_TYPE_FREE(FK, LUTS_PTR(MK)item->key, TK, MK); \
-            if(FV != 0) LUTS_TYPE_FREE(FV, LUTS_PTR(MV)item->val, TV, MV); \
+            if(FK != 0) LUTS_TYPE_FREE(FK, item->key, TK, MK); \
+            if(FV != 0) LUTS_TYPE_FREE(FV, item->val, TV, MV); \
         } \
     }
 

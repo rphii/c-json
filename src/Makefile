@@ -23,9 +23,9 @@ CFLAGS  := -Wall -Wextra -Wimplicit -Wfatal-errors -std=gnu2x \
 		   -DPROC_COUNT=$(shell nproc --all) \
 		   ${OPTIMIZE} $(JEMALLOC) \
 		   ##############\
+		   -Og -fsanitize=address -rdynamic -ggdb3 \
 		   -DNDEBUG \
 		   -Og -fsanitize=address -rdynamic \
-		   -Og -fsanitize=address -rdynamic -ggdb3 \
 		   -DNDEBUG -pg -rdynamic \
 		   -Og -rdynamic -ggdb3 \
 		   -DCOLORPRINT_DISABLE \
@@ -34,9 +34,9 @@ LDFLAGS := \
 		   -lm \
 		   ${OPTIMIZE} $(JEMALLOC) \
 		   ##############\
+		   -Og -fsanitize=address -rdynamic -ggdb3 \
 		   -DNDEBUG \
 		   -Og -fsanitize=address -rdynamic \
-		   -Og -fsanitize=address -rdynamic -ggdb3 \
 		   -DNDEBUG -pg -rdynamic \
 		   -Og -rdynamic -ggdb3 \
 		   -pg -rdynamic \

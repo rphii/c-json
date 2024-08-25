@@ -68,7 +68,7 @@ void vjson_sort(VJson *vjson);
 
 #define ERR_vjson_fmt(...) "failed formatting json vector"
 ErrDecl vjson_fmt(VJson *vjson, Str *str, JsonOptions *options);
-#define ERR_tjson_fmt(...) "failed formatting json vector"
+#define ERR_tjson_fmt(...) "failed formatting json object"
 ErrDecl tjson_fmt(TJson *tjson, Str *str, JsonOptions *options);
 
 void json_free(Json *json);

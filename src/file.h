@@ -21,6 +21,9 @@ typedef enum {
 
 typedef int (*FileFunc)(Str *filename, void *);
 
+#define ERR_file_exec(dirname, subdirs, rec, exec, args) "an error occured executing function on files '%.*s'", STR_F(dirname)
+ErrDecl file_exec(Str *dirname, VStr *subdirs, bool recursive, FileFunc exec, void *args);
+
 #define FILE_PATH_MAX   4096
 
 FileTypeList file_get_type(Str *filename);
@@ -38,6 +41,9 @@ ErrDecl file_str_write(Str *filename, Str *content);
 #define ERR_FILE_FP_READ "failed to read file"
 #define ERR_file_fp_read(file, content) "failed reading file pointer '%p'", file
 ErrDecl file_fp_read(FILE *file, Str *content);
+
+#define ERR_file_dir_read(dirname, files) "failed reading directory"
+ErrDecl file_dir_read(Str *dirname, VStr *files);
 
 #define FILE_H
 #endif
