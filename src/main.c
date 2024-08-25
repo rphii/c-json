@@ -812,6 +812,7 @@ int main(int argc, const char **argv)
     //Str filename = STR("../testfiles/instruments.json");
 
     Str files[] = {
+        STR("../data/test.json"),
         STR("../data/5MB-min.json"),
         STR("../testfiles/apache_builds.json"),
         STR("../testfiles/canada.json"),
@@ -893,7 +894,7 @@ int main(int argc, const char **argv)
 #endif
 
     //list_tags();
-    list_not_downloaded();
+    //list_not_downloaded();
 #if 0
     Str filename = {0};
     size_t index = 0;

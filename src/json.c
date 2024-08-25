@@ -159,7 +159,8 @@ error:
 inline void static_json_parse_skip_ws(Str *str)
 {
     while(str_length(str) && isspace(str_get_front(str))) {
-        ++str->first;
+        /////++str->first;
+        str_pop_front_raw(str, 1);
     }
 }
 
@@ -199,7 +200,8 @@ ErrImplStatic static_json_parse_single_char(Str *str, char c)
     if(!(str_length(str) && str_get_front(str) == c)) {
         return -1;
     }
-    ++str->first;
+    /////++str->first;
+    str_pop_front_raw(str, 1);
     return 0;
 }
     
@@ -271,7 +273,8 @@ ErrImplStatic static_json_parse_str(Str *value, Str *str)
                     for(size_t i = 0; i < 4; ++i) {
                         // TODO: fix, this is horrible.
                         if(!str_length(str)) THROW("not enough characters after \\u escape");
-                        ++str->first;
+                        /////++str->first;
+                        str_pop_front_raw(str, 1);
                     }
                 } break;
             }
@@ -304,7 +307,8 @@ ErrImplStatic static_json_parse_str(Str *value, Str *str)
                 //TRY(str_push_back(&val, c), ERR_VEC_PUSH_BACK);
             }
         }
-        ++str->first;
+        /////++str->first;
+        str_pop_front_raw(str, 1);
     }
     //val.last = str->first;
     /* verify end */
@@ -381,10 +385,12 @@ ErrImplStatic static_json_parse_num(Json *json, Str *str)
     if(str_length(&val) && str_get_front(&val) == '0') {
         is_float = true;
     } else if(str_length(&val)) {
-        ++val.first;
+        /////++val.first;
+        str_pop_front_raw(&val, 1);
         for(size_t i = 0; i < str_length(&val); ++i) {
             char c = str_get_front(&val);
-            ++val.first;
+            /////++val.first;
+            str_pop_front_raw(&val, 1);
             if(c == '.' || c == 'E' || c == 'e') {
                 is_float = true;
                 break;
@@ -404,7 +410,9 @@ ErrImplStatic static_json_parse_num(Json *json, Str *str)
         }
         json->id = JSON_FLOAT;
         json->f = f;
-        str->first += (endptr - str_iter_begin(str));
+        /////str->first += (endptr - str_iter_begin(str));
+        ptrdiff_t n = endptr - str_iter_begin(str);
+        str_pop_front_raw(str, n);
         return 0;
     } else {
         //printff("  INT!");
@@ -416,7 +424,9 @@ ErrImplStatic static_json_parse_num(Json *json, Str *str)
         }
         json->id = JSON_INT;
         json->i = i;
-        str->first += (endptr - str_iter_begin(str));
+        /////str->first += (endptr - str_iter_begin(str));
+        ptrdiff_t n = endptr - str_iter_begin(str);
+        str_pop_front_raw(str, n);
         return 0;
     }
     THROW("couldn't parse number");
@@ -434,13 +444,15 @@ ErrImplStatic static_json_parse_bool(Json *json, Str *str)
     if(str_length(str) >= str_length(&t) && !str_cmp(&STR_IE(*str, str_length(&t)), &t)) {
         json->id = JSON_BOOL;
         json->b = true;
-        str->first += str_length(&t);
+        /////str->first += str_length(&t);
+        str_pop_front_raw(str, str_length(&t));
         return 0;
     }
     if(str_length(str) >= str_length(&f) && !str_cmp(&STR_IE(*str, str_length(&f)), &f)) {
         json->id = JSON_BOOL;
         json->b = false;
-        str->first += str_length(&f);
+        /////str->first += str_length(&f);
+        str_pop_front_raw(str, str_length(&f));
         return 0;
     }
     THROW("'t' or 'f' character found, expecting 'true' or 'false', nothing found");
@@ -456,7 +468,8 @@ ErrImplStatic static_json_parse_null(Json *json, Str *str)
     Str n = STR("null");
     if(str_length(str) >= str_length(&n) && !str_cmp(&STR_IE(*str, str_length(&n)), &n)) {
         json->id = JSON_NULL;
-        str->first += str_length(&n);
+        /////str->first += str_length(&n);
+        str_pop_front_raw(str, str_length(&n));
         return 0;
     }
     THROW("'n' found, expecting 'null', nothing found");
@@ -469,6 +482,7 @@ ErrImplStatic static_json_parse_val(Json *json, Str *str)
     ASSERT_ARG(json);
     ASSERT_ARG(str);
     JsonList id = static_json_parse_detect(json, str);
+    //printff("id %u / [%.50s]:%zu-%zu", id, str_iter_begin(str), str->first, str_length(str));
     switch(id) {
         case JSON_FLOAT: // redundant
         case JSON_INT: {
@@ -498,6 +512,7 @@ ErrImplStatic static_json_parse_val(Json *json, Str *str)
         } break;
         case JSON_NONE: {} break;
     }
+    //printff("   parse val done");
     return 0;
 error:
     return -1;

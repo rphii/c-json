@@ -48,6 +48,11 @@ void str_remove_trailing_ch(Str *str, char ch, char ch_escape);
 void str_cstr(const Str *str, char *cstr, size_t len);
 void str_clear_to_last(Str *str);
 
+#define str_pop_front_raw(str, n)  do { \
+        (str)->s += (n); \
+        (str)->last -= (n); \
+    } while(0)
+
 #define ERR_str_fmt_va(str, format, argp) "failed formatting string"
 ErrDecl str_fmt_va(Str *str, const char *format, va_list argp);
 #define ERR_str_fmt(str, format, ...) "failed formatting string"
