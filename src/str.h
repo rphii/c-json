@@ -33,6 +33,7 @@ VEC_INCLUDE(Str, str, char, BY_VAL);
 #define STR_IE(str, iE)         (const Str){.s = (str).s, .first = (str).first, .last = (str).first + iE}
 
 #define ERR_str_extend_back(...)    "failed appending string to other string"
+#define ERR_str_push_back(...)      "failed appending character to string"
 #define ERR_str_copy(...)           "failed copying string"
 
 /* other functions */

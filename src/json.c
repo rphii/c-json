@@ -45,29 +45,56 @@ inline void json_free(Json *json)
     memset(json, 0, sizeof(*json));
 }
 
+#define ERR_static_json_fmt_spacing(...) "failed formatting spacing"
+ErrImplStatic static_json_fmt_spacing(Str *str, size_t n)
+{
+    ASSERT_ARG(str);
+    for(size_t i = 0; i < n; ++i) {
+        TRYC(str_push_back(str, ' '));
+    }
+    return 0;
+error:
+    return -1;
+}
+
 ErrImpl vjson_fmt(VJson *vjson, Str *str, JsonOptions *options)
 {
     ASSERT_ARG(vjson);
     ASSERT_ARG(str);
     ASSERT_ARG(options);
     /* beginning of vector & spacing */
+#if 0
     TRYC(str_fmt(str, "%*s[\n", options->fmt.spacing, ""));
+#else
+    TRYC(static_json_fmt_spacing(str, options->fmt.spacing));
+    TRYC(str_push_back(str, '['));
+    TRYC(str_push_back(str, '\n'));
+#endif
     options->fmt.spacing += options->fmt.tabs;
     /* format vector */
     for(size_t i = 0; i < vjson_length(vjson); ++i) {
         Json *json = vjson_get_at(vjson, i);
         /* actually format */
         if(i) {
-            TRYC(str_fmt(str, ",\n"));
+            //TRYC(str_fmt(str, ",\n"));
+            TRYC(str_push_back(str, ','));
+            TRYC(str_push_back(str, '\n'));
         }
         if(json->id != JSON_ARR && json->id != JSON_OBJ) {
-            TRYC(str_fmt(str, "%*s", options->fmt.spacing, ""));
+            TRYC(static_json_fmt_spacing(str, options->fmt.spacing));
+            //TRYC(str_fmt(str, "%*s", options->fmt.spacing, ""));
         }
         TRYC(json_fmt(json, str, options, 0));
     }
     /* spacing & end of vector */
     options->fmt.spacing -= options->fmt.tabs;
+#if 0
     TRYC(str_fmt(str, "\n%*s]", options->fmt.spacing, ""));
+#else
+    TRYC(str_push_back(str, '\n'));
+    TRYC(static_json_fmt_spacing(str, options->fmt.spacing));
+    TRYC(str_push_back(str, ']'));
+#endif
     return 0;
 error:
     return -1;
@@ -79,7 +106,13 @@ ErrImpl tjson_fmt(TJson *tjson, Str *str, JsonOptions *options)
     ASSERT_ARG(str);
     ASSERT_ARG(options);
     /* beginning of object & spacing */
+#if 0
     TRYC(str_fmt(str, "%*s{\n", options->fmt.spacing, ""));
+#else
+    TRYC(static_json_fmt_spacing(str, options->fmt.spacing));
+    TRYC(str_push_back(str, '{'));
+    TRYC(str_push_back(str, '\n'));
+#endif
     options->fmt.spacing += options->fmt.tabs;
     /* format object */
     bool first = true;
@@ -90,16 +123,31 @@ ErrImpl tjson_fmt(TJson *tjson, Str *str, JsonOptions *options)
         if(!jsonkv) continue;
         if(jsonkv->hash == LUTS_EMPTY) continue;
         if(!first) {
-            TRYC(str_fmt(str, ",\n"));
+            //TRYC(str_fmt(str, ",\n"));
+            TRYC(str_push_back(str, ','));
+            TRYC(str_push_back(str, '\n'));
         }
         ++n;
+#if 0
         TRYC(str_fmt(str, "%*s\"%.*s\": ", options->fmt.spacing, "", STR_F(jsonkv->key)));
+#else
+        TRYC(static_json_fmt_spacing(str, options->fmt.spacing));
+        TRYC(str_push_back(str, '"'));
+        TRYC(str_extend_back(str, jsonkv->key));
+        TRYC(str_extend_back(str, &STR("\": ")));
+#endif
         TRYC(json_fmt(jsonkv->val, str, options, 0));
         first = false;
     }
     /* spacing & end of object */
     options->fmt.spacing -= options->fmt.tabs;
+#if 0
     TRYC(str_fmt(str, "\n%*s}", options->fmt.spacing, ""));
+#else
+    TRYC(str_push_back(str, '\n'));
+    TRYC(static_json_fmt_spacing(str, options->fmt.spacing));
+    TRYC(str_push_back(str, '}'));
+#endif
     return 0;
 error:
     return -1;
@@ -129,7 +177,13 @@ ErrImpl json_fmt(Json *json, Str *str, JsonOptions *options, Str *path)
             TRYC(vjson_fmt(&json->arr, str, options));
         } break;
         case JSON_STR: {
+#if 0
             TRYC(str_fmt(str, "\"%.*s\"", STR_F(&json->str)));
+#else
+            TRYC(str_push_back(str, '"'));
+            TRYC(str_extend_back(str, &json->str));
+            TRYC(str_push_back(str, '"'));
+#endif
         } break;
         case JSON_OBJ: {
             TRYC(tjson_fmt(&json->obj, str, options));
@@ -138,13 +192,25 @@ ErrImpl json_fmt(Json *json, Str *str, JsonOptions *options, Str *path)
             TRYC(str_fmt(str, "%lli", json->i));
         } break;
         case JSON_BOOL: {
+#if 0
             TRYC(str_fmt(str, "%s", json->b ? "true" : "false"));
+#else
+            if(json->b) {
+                TRYC(str_extend_back(str, &STR("true")));
+            } else {
+                TRYC(str_extend_back(str, &STR("false")));
+            }
+#endif
         } break;
         case JSON_NONE: {
             THROW("can't format invalid json struct");
         } break;
         case JSON_NULL: {
+#if 0
             TRYC(str_fmt(str, "null"));
+#else
+            TRYC(str_extend_back(str, &STR("null")));
+#endif
         } break;
         case JSON_FLOAT: {
             TRYC(str_fmt(str, "%lf", json->f));

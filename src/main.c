@@ -812,34 +812,35 @@ int main(int argc, const char **argv)
     //Str filename = STR("../testfiles/instruments.json");
 
     Str files[] = {
-        STR("../data/test.json"),
+        //STR("../data/missing-colon.json"),
+        //STR("../data/test.json"),
         STR("../data/5MB-min.json"),
-        STR("../testfiles/apache_builds.json"),
-        STR("../testfiles/canada.json"),
-        STR("../testfiles/citm_catalog.json"),
-        STR("../testfiles/github_events.json"),
-        STR("../testfiles/gsoc-2018.json"),
-        STR("../testfiles/instruments.json"),
-        STR("../testfiles/marine_ik.json"),
-        STR("../testfiles/mesh.json"),
-        STR("../testfiles/mesh.pretty.json"),
-        STR("../testfiles/numbers.json"),
-        STR("../testfiles/random.json"),
-        STR("../testfiles/twitter.json"),
-        STR("../testfiles/twitterescaped.json"),
-        STR("../testfiles/update-center.json"),
-        STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/b2b-h2y-y2h.json"),
-        STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/boss2boss-yokai2yokai-human2humans.json"),
-        STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/default.json"),
-        STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/default2.json"),
-        STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/empty.json"),
-        STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/hb2yb-yb2hb-ye2he-he2ye.json"),
-        STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/largefile-original.json"),
-        STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/largefile.json"),
-        STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/test-v0.0.13.json"),
-        STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/test.json"),
-        STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/testing.json"),
-        STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/wtf-2786327771-hollow.json"),
+        //STR("../testfiles/apache_builds.json"),
+        //STR("../testfiles/canada.json"),
+        //STR("../testfiles/citm_catalog.json"),
+        //STR("../testfiles/github_events.json"),
+        //STR("../testfiles/gsoc-2018.json"),
+        //STR("../testfiles/instruments.json"),
+        //STR("../testfiles/marine_ik.json"),
+        //STR("../testfiles/mesh.json"),
+        //STR("../testfiles/mesh.pretty.json"),
+        //STR("../testfiles/numbers.json"),
+        //STR("../testfiles/random.json"),
+        //STR("../testfiles/twitter.json"),
+        //STR("../testfiles/twitterescaped.json"),
+        //STR("../testfiles/update-center.json"),
+        //STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/b2b-h2y-y2h.json"),
+        //STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/boss2boss-yokai2yokai-human2humans.json"),
+        //STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/default.json"),
+        //STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/default2.json"),
+        //STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/empty.json"),
+        //STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/hb2yb-yb2hb-ye2he-he2ye.json"),
+        //STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/largefile-original.json"),
+        //STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/largefile.json"),
+        //STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/test-v0.0.13.json"),
+        //STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/test.json"),
+        //STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/testing.json"),
+        //STR("/home/rphii/.local/share/Steam/steamapps/compatdata/1325200/pfx/drive_c/users/steamuser/Desktop/wtf-2786327771-hollow.json"),
     };
     
     for(size_t i = 0; i < SIZE_ARRAY(files); ++i) {
@@ -849,9 +850,9 @@ int main(int argc, const char **argv)
         Json json = {0};
         TRYC(json_parse(&json, &in, 0, 0));
 
-        //str_clear(&out);
-        //TRYC(json_fmt(&json, &out, 0, 0));
-        //printf("%.*s\n", STR_F(&out));
+        str_clear(&out);
+        TRYC(json_fmt(&json, &out, 0, 0));
+        printf("%.*s\n", STR_F(&out));
 
         json_free(&json);
 
