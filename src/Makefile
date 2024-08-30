@@ -21,7 +21,7 @@ CC      := gcc
 CFLAGS  := -Wall -Wextra -Wimplicit -Wfatal-errors -std=gnu2x \
 		   -Wno-unused-parameter \
 		   -DPROC_COUNT=$(shell nproc --all) \
-		   ${OPTIMIZE} $(JEMALLOC) \
+		   -pg ${OPTIMIZE} $(JEMALLOC) \
 		   ##############\
 		   -Og -fsanitize=address -rdynamic -ggdb3 \
 		   -DNDEBUG \
@@ -32,7 +32,7 @@ CFLAGS  := -Wall -Wextra -Wimplicit -Wfatal-errors -std=gnu2x \
 		   ###############
 LDFLAGS := \
 		   -lm \
-		   ${OPTIMIZE} $(JEMALLOC) \
+		   -pg ${OPTIMIZE} $(JEMALLOC) \
 		   ##############\
 		   -Og -fsanitize=address -rdynamic -ggdb3 \
 		   -DNDEBUG \

@@ -5,6 +5,7 @@
 
 #include "str.h"
 
+#include "info.h"
 #include "file.h"
 #include "json.h"
 
@@ -806,6 +807,40 @@ int main(int argc, const char **argv)
 #endif
 
 #if 1
+    info_disable_all(INFO_LEVEL_ALL);
+    info_enable_all(INFO_LEVEL_TEXT);
+
+    Json json = {0};
+    Str lines = {0};
+    Str filename = STR("../jsonfiles.txt");
+    TRYC(file_str_read(&filename, &lines));
+    Str line = {.s = lines.s};
+    size_t line_nr = 1;
+    for(;;) {
+        str_get_line(&lines, &line.first, &line.last);
+        if(line.first >= line.last) break;
+        if(str_get_front(&line) != '#') {
+            info(INFO_parsing_file, "%zu:%.*s", line_nr, STR_F(&line));
+            str_clear(&in);
+            str_clear(&out);
+            TRYC(file_str_read(&line, &in));
+            if(!json_parse(&json, &in, 0, 0)) {
+                info_check(INFO_parsing_file, true);
+                //if(!json_fmt(&json, &out, 0, 0)) {
+                //    printf("%.*s\n", STR_F(&out));
+                //}
+            } else {
+                info_check(INFO_parsing_file, false);
+            }
+            json_free(&json);
+        }
+        ++line_nr;
+        line.first = line.last + 1;
+    }
+    str_free(&lines);
+#endif
+
+#if 0
     //Str filename = STR("../data/sample.json");
     //Str filename = STR("../data/512KB.json");
     //Str filename = STR("../data/5MB-min.json");

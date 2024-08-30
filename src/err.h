@@ -60,6 +60,14 @@ void platform_trace(void);      /* implementation in platform.c */
     ERR_PRINTF(F("[ERROR]", BOLD FG_RD_B) " " F("%s:%d:%s", FG_WT_B) " " fmt "\n" , __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
     goto error; } while(0)
 
+#define THROW_P(print_err, fmt, ...)    do { \
+        if(print_err) { \
+            THROW(fmt, ##__VA_ARGS__); \
+        } else { \
+            goto error; \
+        } \
+    } while(0)
+
 #define ABORT(fmt, ...)      do { \
     platform_trace(); ERR_PRINTF(F("[ABORT]", BOLD FG_BK BG_RD_B) " " F("%s:%d:%s (end of trace)", FG_WT_B) " " fmt "\n" , __FILE__, __LINE__, __func__, ##__VA_ARGS__); exit(-1); } while(0)
 
@@ -74,6 +82,7 @@ void platform_trace(void);      /* implementation in platform.c */
     } while(0)
 
 #define TRY(stmt, fmt, ...)  if (stmt) { THROW(fmt, ##__VA_ARGS__); }
+#define TRY_P(print_err, stmt, fmt, ...)  if (stmt) { THROW_P(print_err, fmt, ##__VA_ARGS__); }
 #define ASSERT_ERROR(x)      assert(0 && (x))
 
 #ifndef NDEBUG
@@ -110,7 +119,8 @@ void platform_trace(void);      /* implementation in platform.c */
     } while(0);
 
 //#define TRYF(function, ...)  TRY(function(__VA_ARGS__), function##_ERR(__VA_ARGS__))
-#define TRYC(function)      TRY(function, ERR_##function)
+#define TRYC(function)                  TRY(function, ERR_##function)
+#define TRYC_P(print_err, function)     TRY_P(print_err, function, ERR_##function)
 
 
 #define ERR_H

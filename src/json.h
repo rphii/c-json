@@ -49,11 +49,13 @@ typedef struct JsonOptions {
     struct {
         bool sort_array;
         bool readonly;
+        bool print_err;
     } parse;
     struct {
         int tabs;
         int spacing; // used internally tbh
         int level;
+        bool print_err;
         bool sort_object;
         bool compact; // TODO rename/add_newlines???
     } fmt;
@@ -63,6 +65,7 @@ typedef struct JsonOptions {
 
 JsonOptions json_options_default(void);
 
+void json_zero(Json *json);
 void json_sort(Json *json);
 void vjson_sort(VJson *vjson);
 

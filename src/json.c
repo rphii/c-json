@@ -23,10 +23,16 @@ LUTS_IMPLEMENT(TJson, tjson, Str, BY_REF, Json, BY_REF, str_hash, str_cmp, str_f
 
 
 #define ERR_static_json_parse_val(...) "failed parsing json value"
-ErrImplStatic static_json_parse_val(Json *json, Str *str);
+ErrImplStatic static_json_parse_val(Json *json, Str *str, JsonOptions *options);
 
 void static_json_parse_skip_ws(Str *str);
 JsonList static_json_parse_detect(Json *json, Str *str);
+
+inline void json_zero(Json *json)
+{
+    ASSERT_ARG(json);
+    memset(json, 0, sizeof(*json));
+}
 
 inline void json_free(Json *json)
 {
@@ -46,11 +52,12 @@ inline void json_free(Json *json)
 }
 
 #define ERR_static_json_fmt_spacing(...) "failed formatting spacing"
-ErrImplStatic static_json_fmt_spacing(Str *str, size_t n)
+ErrImplStatic static_json_fmt_spacing(Str *str, size_t n, JsonOptions *options)
 {
     ASSERT_ARG(str);
+    ASSERT_ARG(options);
     for(size_t i = 0; i < n; ++i) {
-        TRYC(str_push_back(str, ' '));
+        TRYC_P(options->fmt.print_err, str_push_back(str, ' '));
     }
     return 0;
 error:
@@ -64,11 +71,11 @@ ErrImpl vjson_fmt(VJson *vjson, Str *str, JsonOptions *options)
     ASSERT_ARG(options);
     /* beginning of vector & spacing */
 #if 0
-    TRYC(str_fmt(str, "%*s[\n", options->fmt.spacing, ""));
+    TRYC_P(str_fmt(str, "%*s[\n", options->fmt.spacing, ""));
 #else
-    TRYC(static_json_fmt_spacing(str, options->fmt.spacing));
-    TRYC(str_push_back(str, '['));
-    TRYC(str_push_back(str, '\n'));
+    TRYC_P(options->fmt.print_err, static_json_fmt_spacing(str, options->fmt.spacing, options));
+    TRYC_P(options->fmt.print_err, str_push_back(str, '['));
+    TRYC_P(options->fmt.print_err, str_push_back(str, '\n'));
 #endif
     options->fmt.spacing += options->fmt.tabs;
     /* format vector */
@@ -76,24 +83,24 @@ ErrImpl vjson_fmt(VJson *vjson, Str *str, JsonOptions *options)
         Json *json = vjson_get_at(vjson, i);
         /* actually format */
         if(i) {
-            //TRYC(str_fmt(str, ",\n"));
-            TRYC(str_push_back(str, ','));
-            TRYC(str_push_back(str, '\n'));
+            //TRYC_P(str_fmt(str, ",\n"));
+            TRYC_P(options->fmt.print_err, str_push_back(str, ','));
+            TRYC_P(options->fmt.print_err, str_push_back(str, '\n'));
         }
         if(json->id != JSON_ARR && json->id != JSON_OBJ) {
-            TRYC(static_json_fmt_spacing(str, options->fmt.spacing));
-            //TRYC(str_fmt(str, "%*s", options->fmt.spacing, ""));
+            TRYC_P(options->fmt.print_err, static_json_fmt_spacing(str, options->fmt.spacing, options));
+            //TRYC_P(str_fmt(str, "%*s", options->fmt.spacing, ""));
         }
-        TRYC(json_fmt(json, str, options, 0));
+        TRYC_P(options->fmt.print_err, json_fmt(json, str, options, 0));
     }
     /* spacing & end of vector */
     options->fmt.spacing -= options->fmt.tabs;
 #if 0
-    TRYC(str_fmt(str, "\n%*s]", options->fmt.spacing, ""));
+    TRYC_P(str_fmt(str, "\n%*s]", options->fmt.spacing, ""));
 #else
-    TRYC(str_push_back(str, '\n'));
-    TRYC(static_json_fmt_spacing(str, options->fmt.spacing));
-    TRYC(str_push_back(str, ']'));
+    TRYC_P(options->fmt.print_err, str_push_back(str, '\n'));
+    TRYC_P(options->fmt.print_err, static_json_fmt_spacing(str, options->fmt.spacing, options));
+    TRYC_P(options->fmt.print_err, str_push_back(str, ']'));
 #endif
     return 0;
 error:
@@ -107,11 +114,11 @@ ErrImpl tjson_fmt(TJson *tjson, Str *str, JsonOptions *options)
     ASSERT_ARG(options);
     /* beginning of object & spacing */
 #if 0
-    TRYC(str_fmt(str, "%*s{\n", options->fmt.spacing, ""));
+    TRYC_P(str_fmt(str, "%*s{\n", options->fmt.spacing, ""));
 #else
-    TRYC(static_json_fmt_spacing(str, options->fmt.spacing));
-    TRYC(str_push_back(str, '{'));
-    TRYC(str_push_back(str, '\n'));
+    TRYC_P(options->fmt.print_err, static_json_fmt_spacing(str, options->fmt.spacing, options));
+    TRYC_P(options->fmt.print_err, str_push_back(str, '{'));
+    TRYC_P(options->fmt.print_err, str_push_back(str, '\n'));
 #endif
     options->fmt.spacing += options->fmt.tabs;
     /* format object */
@@ -123,30 +130,30 @@ ErrImpl tjson_fmt(TJson *tjson, Str *str, JsonOptions *options)
         if(!jsonkv) continue;
         if(jsonkv->hash == LUTS_EMPTY) continue;
         if(!first) {
-            //TRYC(str_fmt(str, ",\n"));
-            TRYC(str_push_back(str, ','));
-            TRYC(str_push_back(str, '\n'));
+            //TRYC_P(str_fmt(str, ",\n"));
+            TRYC_P(options->fmt.print_err, str_push_back(str, ','));
+            TRYC_P(options->fmt.print_err, str_push_back(str, '\n'));
         }
         ++n;
 #if 0
-        TRYC(str_fmt(str, "%*s\"%.*s\": ", options->fmt.spacing, "", STR_F(jsonkv->key)));
+        TRYC_P(str_fmt(str, "%*s\"%.*s\": ", options->fmt.spacing, "", STR_F(jsonkv->key)));
 #else
-        TRYC(static_json_fmt_spacing(str, options->fmt.spacing));
-        TRYC(str_push_back(str, '"'));
-        TRYC(str_extend_back(str, jsonkv->key));
-        TRYC(str_extend_back(str, &STR("\": ")));
+        TRYC_P(options->fmt.print_err, static_json_fmt_spacing(str, options->fmt.spacing, options));
+        TRYC_P(options->fmt.print_err, str_push_back(str, '"'));
+        TRYC_P(options->fmt.print_err, str_extend_back(str, jsonkv->key));
+        TRYC_P(options->fmt.print_err, str_extend_back(str, &STR("\": ")));
 #endif
-        TRYC(json_fmt(jsonkv->val, str, options, 0));
+        TRYC_P(options->fmt.print_err, json_fmt(jsonkv->val, str, options, 0));
         first = false;
     }
     /* spacing & end of object */
     options->fmt.spacing -= options->fmt.tabs;
 #if 0
-    TRYC(str_fmt(str, "\n%*s}", options->fmt.spacing, ""));
+    TRYC_P(str_fmt(str, "\n%*s}", options->fmt.spacing, ""));
 #else
-    TRYC(str_push_back(str, '\n'));
-    TRYC(static_json_fmt_spacing(str, options->fmt.spacing));
-    TRYC(str_push_back(str, '}'));
+    TRYC_P(options->fmt.print_err, str_push_back(str, '\n'));
+    TRYC_P(options->fmt.print_err, static_json_fmt_spacing(str, options->fmt.spacing, options));
+    TRYC_P(options->fmt.print_err, str_push_back(str, '}'));
 #endif
     return 0;
 error:
@@ -174,31 +181,31 @@ ErrImpl json_fmt(Json *json, Str *str, JsonOptions *options, Str *path)
 
     switch(json->id) {
         case JSON_ARR: {
-            TRYC(vjson_fmt(&json->arr, str, options));
+            TRYC_P(options->fmt.print_err, vjson_fmt(&json->arr, str, options));
         } break;
         case JSON_STR: {
 #if 0
-            TRYC(str_fmt(str, "\"%.*s\"", STR_F(&json->str)));
+            TRYC_P(str_fmt(str, "\"%.*s\"", STR_F(&json->str)));
 #else
-            TRYC(str_push_back(str, '"'));
-            TRYC(str_extend_back(str, &json->str));
-            TRYC(str_push_back(str, '"'));
+            TRYC_P(options->fmt.print_err, str_push_back(str, '"'));
+            TRYC_P(options->fmt.print_err, str_extend_back(str, &json->str));
+            TRYC_P(options->fmt.print_err, str_push_back(str, '"'));
 #endif
         } break;
         case JSON_OBJ: {
-            TRYC(tjson_fmt(&json->obj, str, options));
+            TRYC_P(options->fmt.print_err, tjson_fmt(&json->obj, str, options));
         } break;
         case JSON_INT: {
-            TRYC(str_fmt(str, "%lli", json->i));
+            TRYC_P(options->fmt.print_err, str_fmt(str, "%lli", json->i));
         } break;
         case JSON_BOOL: {
 #if 0
-            TRYC(str_fmt(str, "%s", json->b ? "true" : "false"));
+            TRYC_P(str_fmt(str, "%s", json->b ? "true" : "false"));
 #else
             if(json->b) {
-                TRYC(str_extend_back(str, &STR("true")));
+                TRYC_P(options->fmt.print_err, str_extend_back(str, &STR("true")));
             } else {
-                TRYC(str_extend_back(str, &STR("false")));
+                TRYC_P(options->fmt.print_err, str_extend_back(str, &STR("false")));
             }
 #endif
         } break;
@@ -207,13 +214,13 @@ ErrImpl json_fmt(Json *json, Str *str, JsonOptions *options, Str *path)
         } break;
         case JSON_NULL: {
 #if 0
-            TRYC(str_fmt(str, "null"));
+            TRYC_P(str_fmt(str, "null"));
 #else
-            TRYC(str_extend_back(str, &STR("null")));
+            TRYC_P(options->fmt.print_err, str_extend_back(str, &STR("null")));
 #endif
         } break;
         case JSON_FLOAT: {
-            TRYC(str_fmt(str, "%lf", json->f));
+            TRYC_P(options->fmt.print_err, str_fmt(str, "%lf", json->f));
         } break;
     }
 
@@ -273,12 +280,13 @@ ErrImplStatic static_json_parse_single_char(Str *str, char c)
     
 
 #define ERR_static_json_parse_arr(...) "failed parsing json array"
-ErrImplStatic static_json_parse_arr(Json *json, Str *str)
+ErrImplStatic static_json_parse_arr(Json *json, Str *str, JsonOptions *options)
 {
     ASSERT_ARG(json);
     ASSERT_ARG(str);
+    ASSERT_ARG(options);
     /* verify begin */
-    TRYC(static_json_parse_single_char(str, '['));
+    TRYC_P(options->parse.print_err, static_json_parse_single_char(str, '['));
     /* create vector */
     json->id = JSON_ARR;
     /* are we already at the end? */
@@ -289,9 +297,9 @@ ErrImplStatic static_json_parse_arr(Json *json, Str *str)
     for(;;) {
         /* parse value */
         Json val = {0};
-        TRYC(static_json_parse_val(&val, str));
+        TRYC_P(options->parse.print_err, static_json_parse_val(&val, str, options));
         if(val.id) {
-            TRY(vjson_push_back(&json->arr, &val), ERR_VEC_PUSH_BACK);
+            TRY_P(options->parse.print_err, vjson_push_back(&json->arr, &val), ERR_VEC_PUSH_BACK);
         }
         /* check for next value */
         static_json_parse_skip_ws(str);
@@ -301,19 +309,20 @@ ErrImplStatic static_json_parse_arr(Json *json, Str *str)
     }
     /* verify end */
     static_json_parse_skip_ws(str);
-    TRYC(static_json_parse_single_char(str, ']'));
+    TRYC_P(options->parse.print_err, static_json_parse_single_char(str, ']'));
     return 0;
 error:
     return -1;
 }
 
 #define ERR_static_json_parse_str(...) "failed parsing json string"
-ErrImplStatic static_json_parse_str(Str *value, Str *str)
+ErrImplStatic static_json_parse_str(Str *value, Str *str, JsonOptions *options)
 {
     ASSERT_ARG(value);
     ASSERT_ARG(str);
+    ASSERT_ARG(options);
     /* verify begin */
-    TRYC(static_json_parse_single_char(str, '"'));
+    TRYC_P(options->parse.print_err, static_json_parse_single_char(str, '"'));
     /* create string */
     //json->id = JSON_STR;
     Str val = {0};
@@ -338,14 +347,16 @@ ErrImplStatic static_json_parse_str(Str *value, Str *str)
                 case 'u': { 
                     for(size_t i = 0; i < 4; ++i) {
                         // TODO: fix, this is horrible.
-                        if(!str_length(str)) THROW("not enough characters after \\u escape");
+                        if(!str_length(str)) {
+                            THROW_P(options->parse.print_err, "not enough characters after \\u escape");
+                        }
                         /////++str->first;
                         str_pop_front_raw(str, 1);
                     }
                 } break;
             }
             if(c2) {
-                TRY(str_push_back(&val, c2), ERR_VEC_PUSH_BACK);
+                TRY_P(options->parse.print_err, str_push_back(&val, c2), ERR_VEC_PUSH_BACK);
             }
             pending.first = str->first + 1;
             pending.last = pending.first;
@@ -353,8 +364,8 @@ ErrImplStatic static_json_parse_str(Str *value, Str *str)
             if(c == '\\') {
                 /* TODO: DRY vvvv */
                 if(str_length(&pending)) {
-                    //TRYC(str_fmt(&val, "%.*s", STR_F(&pending)));
-                    TRYC(str_extend_back(&val, &pending));
+                    //TRYC_P(str_fmt(&val, "%.*s", STR_F(&pending)));
+                    TRYC_P(options->parse.print_err, str_extend_back(&val, &pending));
                     pending.first = pending.last;
                 }
                 /* TODO: DRY ^^^^ */
@@ -362,15 +373,15 @@ ErrImplStatic static_json_parse_str(Str *value, Str *str)
             } else if(c == '"') {
                 /* TODO: DRY vvvv */
                 if(str_length(&pending)) {
-                    //TRYC(str_fmt(&val, "%.*s", STR_F(&pending)));
-                    TRYC(str_extend_back(&val, &pending));
+                    //TRYC_P(str_fmt(&val, "%.*s", STR_F(&pending)));
+                    TRYC_P(options->parse.print_err, str_extend_back(&val, &pending));
                     pending.first = pending.last;
                 }
                 /* TODO: DRY ^^^^ */
                 break;
             } else {
                 ++pending.last;
-                //TRY(str_push_back(&val, c), ERR_VEC_PUSH_BACK);
+                //TRY_P(str_push_back(&val, c), ERR_VEC_PUSH_BACK);
             }
         }
         /////++str->first;
@@ -379,7 +390,7 @@ ErrImplStatic static_json_parse_str(Str *value, Str *str)
     //val.last = str->first;
     /* verify end */
     static_json_parse_skip_ws(str);
-    TRYC(static_json_parse_single_char(str, '"'));
+    TRYC_P(options->parse.print_err, static_json_parse_single_char(str, '"'));
     /* set string */
     *value = val;
     return 0;
@@ -388,12 +399,13 @@ error:
 }
 
 #define ERR_static_json_parse_obj(...) "failed parsing json object"
-ErrImplStatic static_json_parse_obj(Json *json, Str *str)
+ErrImplStatic static_json_parse_obj(Json *json, Str *str, JsonOptions *options)
 {
     ASSERT_ARG(json);
     ASSERT_ARG(str);
+    ASSERT_ARG(options);
     /* verify begin */
-    TRYC(static_json_parse_single_char(str, '{'));
+    TRYC_P(options->parse.print_err, static_json_parse_single_char(str, '{'));
     /* create object */
     json->id = JSON_OBJ;
     /* are we already at the end? */
@@ -407,20 +419,20 @@ ErrImplStatic static_json_parse_obj(Json *json, Str *str)
         Json val = {0};
         /* parse string */
         static_json_parse_skip_ws(str);
-        TRYC(static_json_parse_str(&key, str));
+        TRYC_P(options->parse.print_err, static_json_parse_str(&key, str, options));
         /* parse colon */
         static_json_parse_skip_ws(str);
-        TRYC(static_json_parse_single_char(str, ':'));
+        TRYC_P(options->parse.print_err, static_json_parse_single_char(str, ':'));
         /* parse value */
-        TRYC(static_json_parse_val(&val, str));
+        TRYC_P(options->parse.print_err, static_json_parse_val(&val, str, options));
         //if(!json->obj.width) {
-            //TRY(tjson_init(&json->obj, 8), ERR_LUTD_INIT);
+            //TRY_P(tjson_init(&json->obj, 8), ERR_LUTD_INIT);
         //}
         if(val.id) {
-            //TRY(tjson_add(&json->obj, &jsonkv), ERR_LUTD_ADD);
-            //TRY(vjson_push_back(&json->arr, &&jsonkv.val), ERR_VEC_PUSH_BACK);
+            //TRY_P(tjson_add(&json->obj, &jsonkv), ERR_LUTD_ADD);
+            //TRY_P(vjson_push_back(&json->arr, &&jsonkv.val), ERR_VEC_PUSH_BACK);
             //printff("  set [%.*s]", STR_F(&key));
-            TRY(tjson_set(&json->obj, &key, &val), ERR_LUTD_ADD);
+            TRY_P(options->parse.print_err, tjson_set(&json->obj, &key, &val), ERR_LUTD_ADD);
             //printff("  ... ok");
         }
         /* check for next value */
@@ -431,17 +443,18 @@ ErrImplStatic static_json_parse_obj(Json *json, Str *str)
     }
     /* verify end */
     static_json_parse_skip_ws(str);
-    TRYC(static_json_parse_single_char(str, '}'));
+    TRYC_P(options->parse.print_err, static_json_parse_single_char(str, '}'));
     return 0;
 error:
     return -1;
 }
 
 #define ERR_static_json_parse_num(...) "failed parsing json num"
-ErrImplStatic static_json_parse_num(Json *json, Str *str)
+ErrImplStatic static_json_parse_num(Json *json, Str *str, JsonOptions *options)
 {
     ASSERT_ARG(json);
     ASSERT_ARG(str);
+    ASSERT_ARG(options);
     /* determine number format */
     bool is_float = false;
     Str val = *str;
@@ -472,7 +485,7 @@ ErrImplStatic static_json_parse_num(Json *json, Str *str)
         errno = 0;
         double f = strtod(str_iter_begin(str), &endptr); // TODO: not really quite official json
         if(errno) {
-            THROW("strtod() failed: %s", strerror(errno));
+            THROW_P(options->parse.print_err, "strtod() failed: %s", strerror(errno));
         }
         json->id = JSON_FLOAT;
         json->f = f;
@@ -486,7 +499,7 @@ ErrImplStatic static_json_parse_num(Json *json, Str *str)
         errno = 0;
         int i = strtol(str_iter_begin(str), &endptr, 0); // TODO: not really quite official json
         if(errno) {
-            THROW("strtol() failed: %s", strerror(errno));
+            THROW_P(options->parse.print_err, "strtol() failed: %s", strerror(errno));
         }
         json->id = JSON_INT;
         json->i = i;
@@ -495,16 +508,17 @@ ErrImplStatic static_json_parse_num(Json *json, Str *str)
         str_pop_front_raw(str, n);
         return 0;
     }
-    THROW("couldn't parse number");
+    THROW_P(options->parse.print_err, "couldn't parse number");
 error:
     return -1;
 }
 
 #define ERR_static_json_parse_bool(...) "failed parsing json bool"
-ErrImplStatic static_json_parse_bool(Json *json, Str *str)
+ErrImplStatic static_json_parse_bool(Json *json, Str *str, JsonOptions *options)
 {
     ASSERT_ARG(json);
     ASSERT_ARG(str);
+    ASSERT_ARG(options);
     Str t = STR("true");
     Str f = STR("false");
     if(str_length(str) >= str_length(&t) && !str_cmp(&STR_IE(*str, str_length(&t)), &t)) {
@@ -521,16 +535,17 @@ ErrImplStatic static_json_parse_bool(Json *json, Str *str)
         str_pop_front_raw(str, str_length(&f));
         return 0;
     }
-    THROW("'t' or 'f' character found, expecting 'true' or 'false', nothing found");
+    THROW_P(options->parse.print_err, "'t' or 'f' character found, expecting 'true' or 'false', nothing found");
 error:
     return -1;
 }
 
 #define ERR_static_json_parse_null(...) "failed parsing json null"
-ErrImplStatic static_json_parse_null(Json *json, Str *str)
+ErrImplStatic static_json_parse_null(Json *json, Str *str, JsonOptions *options)
 {
     ASSERT_ARG(json);
     ASSERT_ARG(str);
+    ASSERT_ARG(options);
     Str n = STR("null");
     if(str_length(str) >= str_length(&n) && !str_cmp(&STR_IE(*str, str_length(&n)), &n)) {
         json->id = JSON_NULL;
@@ -538,42 +553,43 @@ ErrImplStatic static_json_parse_null(Json *json, Str *str)
         str_pop_front_raw(str, str_length(&n));
         return 0;
     }
-    THROW("'n' found, expecting 'null', nothing found");
+    THROW_P(options->parse.print_err, "'n' found, expecting 'null', nothing found");
 error:
     return -1;
 }
 
-ErrImplStatic static_json_parse_val(Json *json, Str *str)
+ErrImplStatic static_json_parse_val(Json *json, Str *str, JsonOptions *options)
 {
     ASSERT_ARG(json);
     ASSERT_ARG(str);
+    ASSERT_ARG(options);
     JsonList id = static_json_parse_detect(json, str);
     //printff("id %u / [%.50s]:%zu-%zu", id, str_iter_begin(str), str->first, str_length(str));
     switch(id) {
         case JSON_FLOAT: // redundant
         case JSON_INT: {
             //printff("PARSING NUM %zu[%.50s]", str->first, str_iter_begin(str));
-            TRYC(static_json_parse_num(json, str));
+            TRYC_P(options->parse.print_err, static_json_parse_num(json, str, options));
         } break;
         case JSON_ARR: {
             //printff("PARSING ARR %zu[%.50s]", str->first, str_iter_begin(str));
-            TRYC(static_json_parse_arr(json, str));
+            TRYC_P(options->parse.print_err, static_json_parse_arr(json, str, options));
         } break;
         case JSON_OBJ: {
             //printff("PARSING OBJ %zu[%.50s]", str->first, str_iter_begin(str));
-            TRYC(static_json_parse_obj(json, str));
+            TRYC_P(options->parse.print_err, static_json_parse_obj(json, str, options));
         } break;
         case JSON_BOOL: {
             //printff("PARSING BOOL %zu[%.50s]", str->first, str_iter_begin(str));
-            TRYC(static_json_parse_bool(json, str));
+            TRYC_P(options->parse.print_err, static_json_parse_bool(json, str, options));
         } break;
         case JSON_NULL: {
             //printff("PARSING NULL %zu[%.50s]", str->first, str_iter_begin(str));
-            TRYC(static_json_parse_null(json, str));
+            TRYC_P(options->parse.print_err, static_json_parse_null(json, str, options));
         } break;
         case JSON_STR: {
             //printff("PARSING STR %zu[%.50s]", str->first, str_iter_begin(str));
-            TRYC(static_json_parse_str(&json->str, str));
+            TRYC_P(options->parse.print_err, static_json_parse_str(&json->str, str, options));
             json->id = id;
         } break;
         case JSON_NONE: {} break;
@@ -598,7 +614,7 @@ ErrImpl json_parse(Json *json, Str *str, JsonOptions *options, Str *path)
     Str parsing = *str;
 
     do {
-        TRYC(static_json_parse_val(json, &parsing));
+        TRYC_P(options->parse.print_err, static_json_parse_val(json, &parsing, options));
     } while(str_length(&parsing));
 
     return 0;
