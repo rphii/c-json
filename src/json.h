@@ -20,7 +20,7 @@ typedef enum {
 
 typedef struct Json Json;
 
-VEC_INCLUDE(VJson, vjson, Json, BY_REF);
+VEC_INCLUDE(VJson, vjson, Json, BY_REF, BASE);
 LUTS_INCLUDE(TJson, tjson, Str, BY_REF, Json, BY_REF);
 
 typedef struct Json {

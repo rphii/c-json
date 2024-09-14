@@ -1,9 +1,11 @@
 #include "str.h"
 #include "vstr.h"
 
-VEC_IMPLEMENT(VStr, vstr, Str, BY_REF, str_free);
-VEC_IMPLEMENT(VrStr, vrstr, Str, BY_REF, 0);
+VEC_IMPLEMENT(VStr, vstr, Str, BY_REF, BASE, str_free);
+VEC_IMPLEMENT(VrStr, vrstr, Str, BY_REF, BASE, 0);
+VEC_IMPLEMENT(VrStr, vrstr, Str, BY_REF, SORT, str_cmp_sortable);
 
+#if 0
 void vrstr_sort(VrStr *vec, size_t *counts)
 {
     /* shell sort, https://rosettacode.org/wiki/Sorting_algorithms/Shell_sort#C */
@@ -27,5 +29,6 @@ void vrstr_sort(VrStr *vec, size_t *counts)
         }
     }
 }
+#endif
 
 
