@@ -13,7 +13,7 @@
 #include <sys/sysmacros.h>
 #endif
 
-FileTypeList file_get_type(Str *filename) {
+FileTypeList file_get_type(const Str filename) {
 #if defined(PLATFORM_WINDOWS)
     ASSERT("not implemented");
 #else
@@ -28,7 +28,7 @@ FileTypeList file_get_type(Str *filename) {
     return 0;
 }
 
-int file_is_dir(const Str *filename)
+int file_is_dir(const Str filename)
 {
 #if defined(PLATFORM_WINDOWS)
     ASSERT("not implemented");
@@ -43,7 +43,7 @@ int file_is_dir(const Str *filename)
     return 0;
 }
 
-size_t file_size(Str *filename) {/*{{{*/
+size_t file_size(const Str filename) {/*{{{*/
     char path[FILE_PATH_MAX];
     str_cstr(filename, path, FILE_PATH_MAX);
     FILE *fp = fopen(path, "rb");
@@ -57,7 +57,7 @@ size_t file_size(Str *filename) {/*{{{*/
     return result;
 }/*}}}*/
 
-int file_is_file(Str *filename)
+int file_is_file(const Str filename)
 {
 #if defined(PLATFORM_WINDOWS)
     ASSERT("not implemented");
@@ -72,10 +72,9 @@ int file_is_file(Str *filename)
     return 0;
 }
 
-int file_fp_write(FILE *file, Str *content)
+int file_fp_write(FILE *file, Str content)
 {
     if(!file) THROW("invalid filename");
-    if(!content) THROW("invalid output buffer");
 
     /* write file */
     size_t bytes_written = fwrite(str_iter_begin(content), 1, str_length(content), file);
@@ -114,18 +113,17 @@ error:
     return -1;
 }
 
-int file_str_read(Str *filename, Str *content)
+int file_str_read(const Str filename, Str *content)
 {
     int err = 0;
     FILE *file = 0;
-    if(!filename) THROW("invalid filename");
     if(!content) THROW("invalid output buffer");
 
     /* open the file */
     errno = 0;
-    if(filename->last && (
-                filename->s[filename->last - 1] == PLATFORM_CH_SUBDIR ||
-                filename->s[filename->last - 1] == '/')) {
+    if(filename.last && (
+                filename.s[filename.last - 1] == PLATFORM_CH_SUBDIR ||
+                filename.s[filename.last - 1] == '/')) {
         THROW("won't open directories");
     }
 
@@ -146,18 +144,16 @@ error: ERR_CLEAN;
 }
 
 #if 1
-int file_str_write(Str *filename, Str *content)
+int file_str_write(const Str filename, Str content)
 {
     int err = 0;
     FILE *file = 0;
-    if(!filename) THROW("invalid filename");
-    if(!content) THROW("invalid output buffer");
 
     /* open the file */
     errno = 0;
-    if(filename->last && (
-                filename->s[filename->last - 1] == PLATFORM_CH_SUBDIR ||
-                filename->s[filename->last - 1] == '/')) {
+    if(filename.last && (
+                filename.s[filename.last - 1] == PLATFORM_CH_SUBDIR ||
+                filename.s[filename.last - 1] == '/')) {
         THROW("won't open directories");
     }
 
@@ -184,8 +180,7 @@ error: ERR_CLEAN;
 #include <sys/types.h>
 #endif
 
-ErrDecl file_exec(Str *dirname, VStr *subdirs, bool recursive, FileFunc exec, void *args) {
-    ASSERT_ARG(dirname);
+ErrDecl file_exec(const Str dirname, VStr *subdirs, bool recursive, FileFunc exec, void *args) {
     ASSERT_ARG(subdirs);
     ASSERT_ARG(exec);
     int err = 0;
@@ -209,18 +204,18 @@ ErrDecl file_exec(Str *dirname, VStr *subdirs, bool recursive, FileFunc exec, vo
         char filename[FILE_PATH_MAX] = {0};
         while ((dp = readdir(dir)) != NULL) {
             if(dp->d_name[0] == '.') continue; // TODO add an argument for this
-            if(!str_cmp(&STR_L(dp->d_name), &STR(".")) || !str_cmp(&STR_L(dp->d_name), &STR(".."))) continue;
+            if(!str_cmp(STR_L(dp->d_name), STR(".")) || !str_cmp(STR_L(dp->d_name), STR(".."))) continue;
             size_t len2 = snprintf(filename, FILE_PATH_MAX, "%.*s/%s", (int)len, cdir, dp->d_name);
             if(len2 != strlen(filename)) THROW("should probably have len2!");
             //--len;
             Str filename2 = STR_LL(filename, len2);
-            FileTypeList type2 = file_get_type(&filename2);
+            FileTypeList type2 = file_get_type(filename2);
             if(type2 == FILE_TYPE_DIR) {
-                TRYC(str_fmt(&subdir, "%.*s", STR_F(&filename2)));
+                TRYC(str_fmt(&subdir, "%.*s", STR_F(filename2)));
                 TRY(vstr_push_back(subdirs, &subdir), ERR_VEC_PUSH_BACK);
                 str_zero(&subdir);
             } else if(type2 == FILE_TYPE_FILE) {
-                TRY(exec(&filename2, args), "an error occured while executing the function");
+                TRY(exec(filename2, args), "an error occured while executing the function");
             } else {
                 info(INFO_skipping_nofile_nodir, "skipping '%.*s' since no regular file nor directory", STR_F(dirname));
             }
@@ -239,21 +234,21 @@ clean:
 error: ERR_CLEAN;
 }
 
-ErrDecl file_dir_read(Str *dirname, VStr *files) {
+ErrDecl file_dir_read(const Str dirname, VStr *files) {
     int err = 0;
     DIR *dir = 0;
     size_t len = str_rnch(dirname, PLATFORM_CH_SUBDIR, 0);
     if(len < str_length(dirname) && str_get_at(dirname, len) != PLATFORM_CH_SUBDIR) ++len;
     struct dirent *dp = 0;
-    if ((dir = opendir(dirname->s)) == NULL) {
+    if ((dir = opendir(dirname.s)) == NULL) {
         //goto clean;
-        THROW("can't open directory '%.*s'", (int)len, dirname->s);
+        THROW("can't open directory '%.*s'", (int)len, dirname.s);
     }
     while ((dp = readdir(dir)) != NULL) {
         Str filename = {0};
         if(dp->d_name[0] == '.') continue; // TODO add an argument for this
-        if(!str_cmp(&STR_L(dp->d_name), &STR(".")) || !str_cmp(&STR_L(dp->d_name), &STR(".."))) continue;
-        TRYC(str_fmt(&filename, "%.*s/%s", (int)len, dirname->s, dp->d_name));
+        if(!str_cmp(STR_L(dp->d_name), STR(".")) || !str_cmp(STR_L(dp->d_name), STR(".."))) continue;
+        TRYC(str_fmt(&filename, "%.*s/%s", (int)len, dirname.s, dp->d_name));
         //printf("FILE: %.*s\n", STR_F(&filename));
         TRY(vstr_push_back(files, &filename), ERR_VEC_PUSH_BACK);
     }

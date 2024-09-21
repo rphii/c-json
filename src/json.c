@@ -9,17 +9,17 @@ VEC_IMPLEMENT(VrJson, vrjson, Json, BY_REF, BASE, 0);
 
 VEC_IMPLEMENT(VJson, vjson, Json, BY_REF, BASE, json_free);
 
-size_t str_hash2(Str s) {
-    return str_hash(&s);
+size_t str_hash2(const Str *s) {
+    return str_hash(*s);
 }
-int str_cmp2(Str a, Str b) {
-    return str_cmp(&a, &b);
+int str_cmp2(const Str *a, const Str *b) {
+    return str_cmp(*a, *b);
 }
 void str_free2(Str s) {
     str_free(&s);
 }
 
-LUTS_IMPLEMENT(TJson, tjson, Str, BY_REF, Json, BY_REF, str_hash, str_cmp, str_free, json_free);
+LUT_IMPLEMENT(TJson, tjson, Str, BY_REF, Json, BY_REF, str_hash2, str_cmp2, str_free, json_free);
 
 
 #define ERR_static_json_parse_val(...) "failed parsing json value"
@@ -64,9 +64,8 @@ error:
     return -1;
 }
 
-ErrImpl vjson_fmt(VJson *vjson, Str *str, JsonOptions *options)
+ErrImpl vjson_fmt(VJson vjson, Str *str, JsonOptions *options)
 {
-    ASSERT_ARG(vjson);
     ASSERT_ARG(str);
     ASSERT_ARG(options);
     /* beginning of vector & spacing */
@@ -124,11 +123,11 @@ ErrImpl tjson_fmt(TJson *tjson, Str *str, JsonOptions *options)
     /* format object */
     bool first = true;
     size_t n = 0;
-    for(size_t ii = 0; ii < LUTS_CAP(tjson->width); ++ii) {
+    for(size_t ii = 0; ii < LUT_CAP(tjson->width); ++ii) {
         TJsonItem *jsonkv = tjson->buckets[ii];
         if(n >= tjson->used) break;
         if(!jsonkv) continue;
-        if(jsonkv->hash == LUTS_EMPTY) continue;
+        if(jsonkv->hash == LUT_EMPTY) continue;
         if(!first) {
             //TRYC_P(str_fmt(str, ",\n"));
             TRYC_P(options->fmt.print_err, str_push_back(str, ','));
@@ -168,6 +167,23 @@ inline JsonOptions json_options_default(void)
     return options;
 }
 
+#define ERR_json_fmt_str(...)   "failed formatting json string"
+ErrImpl json_fmt_str(Str *out, JsonOptions *options, Str str)
+{
+    ASSERT_ARG(out);
+    ASSERT_ARG(options);
+    for(size_t i = 0; i < str_length(str); ++i) {
+        char c = str_get_at(str, i);
+        if(c == '"') {
+            TRYC(str_push_back(out, '\\'));
+        }
+        TRYC(str_push_back(out, c));
+    }
+    return 0;
+error:
+    return -1;
+}
+
 ErrImpl json_fmt(Json *json, Str *str, JsonOptions *options, Str *path)
 {
     ASSERT_ARG(json);
@@ -181,14 +197,15 @@ ErrImpl json_fmt(Json *json, Str *str, JsonOptions *options, Str *path)
 
     switch(json->id) {
         case JSON_ARR: {
-            TRYC_P(options->fmt.print_err, vjson_fmt(&json->arr, str, options));
+            TRYC_P(options->fmt.print_err, vjson_fmt(json->arr, str, options));
         } break;
         case JSON_STR: {
 #if 0
             TRYC_P(str_fmt(str, "\"%.*s\"", STR_F(&json->str)));
 #else
             TRYC_P(options->fmt.print_err, str_push_back(str, '"'));
-            TRYC_P(options->fmt.print_err, str_extend_back(str, json->str));
+            TRYC_P(options->fmt.print_err, json_fmt_str(str, options, json->str));
+            //TRYC_P(options->fmt.print_err, str_extend_back(str, json->str));
             TRYC_P(options->fmt.print_err, str_push_back(str, '"'));
 #endif
         } break;
@@ -231,7 +248,7 @@ error:
 
 inline void static_json_parse_skip_ws(RStr *str)
 {
-    while(rstr_length(str) && isspace(rstr_get_front(str))) {
+    while(rstr_length(*str) && isspace(rstr_get_front(*str))) {
         /////++str->first;
         rstr_pop_front(str, 0);
     }
@@ -245,10 +262,10 @@ inline JsonList static_json_parse_detect(Json *json, RStr *str)
     /* skip whitespace */
     static_json_parse_skip_ws(str);
     /* now detect */
-    if(!rstr_length(str)) {
+    if(!rstr_length(*str)) {
         return JSON_NONE;
     }
-    char c = rstr_get_front(str);
+    char c = rstr_get_front(*str);
     if(c == '[') {
         return JSON_ARR;
     } else if(c == '{') {
@@ -266,11 +283,11 @@ inline JsonList static_json_parse_detect(Json *json, RStr *str)
     return JSON_NONE;
 }
 
-#define ERR_static_json_parse_single_char(str, c) "failed parsing single character '%c'", c
+#define ERR_static_json_parse_single_char(str, c) "failed parsing single character '%c' @ %zu", c, str->first
 ErrImplStatic static_json_parse_single_char(RStr *str, char c)
 {
     /* verify begin */
-    if(!(rstr_length(str) && rstr_get_front(str) == c)) {
+    if(!(rstr_length(*str) && rstr_get_front(*str) == c)) {
         return -1;
     }
     /////++str->first;
@@ -330,8 +347,8 @@ ErrImplStatic static_json_parse_str(Str *value, RStr *str, JsonOptions *options)
     pending.last = pending.first;
     /* find end of string... TODO: rework */
     unsigned int escape = 0;
-    while(rstr_length(str)) {
-        char c = rstr_get_front(str);
+    while(rstr_length(*str)) {
+        char c = rstr_get_front(*str);
         if(escape) {
             --escape;
             char c2 = 0;
@@ -347,7 +364,7 @@ ErrImplStatic static_json_parse_str(Str *value, RStr *str, JsonOptions *options)
                 case 'u': { 
                     for(size_t i = 0; i < 4; ++i) {
                         // TODO: fix, this is horrible.
-                        if(!rstr_length(str)) {
+                        if(!rstr_length(*str)) {
                             THROW_P(options->parse.print_err, "not enough characters after \\u escape");
                         }
                         /////++str->first;
@@ -363,7 +380,7 @@ ErrImplStatic static_json_parse_str(Str *value, RStr *str, JsonOptions *options)
         } else {
             if(c == '\\') {
                 /* TODO: DRY vvvv */
-                if(rstr_length(&pending)) {
+                if(rstr_length(pending)) {
                     //TRYC_P(str_fmt(&val, "%.*s", STR_F(&pending)));
                     TRYC_P(options->parse.print_err, rstr_extend_back(&val, pending));
                     pending.first = pending.last;
@@ -372,7 +389,7 @@ ErrImplStatic static_json_parse_str(Str *value, RStr *str, JsonOptions *options)
                 escape = 1;
             } else if(c == '"') {
                 /* TODO: DRY vvvv */
-                if(rstr_length(&pending)) {
+                if(rstr_length(pending)) {
                     //TRYC_P(str_fmt(&val, "%.*s", STR_F(&pending)));
                     TRYC_P(options->parse.print_err, rstr_extend_back(&val, pending));
                     pending.first = pending.last;
@@ -432,7 +449,7 @@ ErrImplStatic static_json_parse_obj(Json *json, RStr *str, JsonOptions *options)
             //TRY_P(tjson_add(&json->obj, &jsonkv), ERR_LUTD_ADD);
             //TRY_P(vjson_push_back(&json->arr, &&jsonkv.val), ERR_VEC_PUSH_BACK);
             //printff("  set [%.*s]", STR_F(&key));
-            TRY_P(options->parse.print_err, tjson_set(&json->obj, &key, &val), ERR_LUTD_ADD);
+            TRY_P(options->parse.print_err, tjson_set(&json->obj, &key, &val), ERR_LUT_SET);
             //printff("  ... ok");
         }
         /* check for next value */
@@ -462,13 +479,13 @@ ErrImplStatic static_json_parse_num(Json *json, RStr *str, JsonOptions *options)
     /* may be positive or negative */
     (void) static_json_parse_single_char(&val, '-'); // TODO: make way to remove (void)
     /* if the number begins with 0, instantly mark as float */
-    if(rstr_length(&val) && rstr_get_front(&val) == '0') {
+    if(rstr_length(val) && rstr_get_front(val) == '0') {
         is_float = true;
-    } else if(rstr_length(&val)) {
+    } else if(rstr_length(val)) {
         /////++val.first;
         rstr_pop_front(&val, 0);
-        for(size_t i = 0; i < rstr_length(&val); ++i) {
-            char c = rstr_get_front(&val);
+        for(size_t i = 0; i < rstr_length(val); ++i) {
+            char c = rstr_get_front(val);
             /////++val.first;
             rstr_pop_front(&val, 0);
             if(c == '.' || c == 'E' || c == 'e') {
@@ -484,14 +501,14 @@ ErrImplStatic static_json_parse_num(Json *json, RStr *str, JsonOptions *options)
         //printff("  FLOAT!");
         char *endptr = 0;
         errno = 0;
-        double f = strtod(rstr_iter_begin(str), &endptr); // TODO: not really quite official json
+        double f = strtod(rstr_iter_begin(*str), &endptr); // TODO: not really quite official json
         if(errno) {
             THROW_P(options->parse.print_err, "strtod() failed: %s", strerror(errno));
         }
         json->id = JSON_FLOAT;
         json->f = f;
         /////str->first += (endptr - str_iter_begin(str));
-        ptrdiff_t n = endptr - rstr_iter_begin(str);
+        ptrdiff_t n = endptr - rstr_iter_begin(*str);
         for(ptrdiff_t i = 0; i < n; ++i) {
             rstr_pop_front(str, 0);
         }
@@ -500,14 +517,14 @@ ErrImplStatic static_json_parse_num(Json *json, RStr *str, JsonOptions *options)
         //printff("  INT!");
         char *endptr = 0;
         errno = 0;
-        int i = strtol(rstr_iter_begin(str), &endptr, 0); // TODO: not really quite official json
+        int i = strtol(rstr_iter_begin(*str), &endptr, 0); // TODO: not really quite official json
         if(errno) {
             THROW_P(options->parse.print_err, "strtol() failed: %s", strerror(errno));
         }
         json->id = JSON_INT;
         json->i = i;
         /////str->first += (endptr - str_iter_begin(str));
-        ptrdiff_t n = endptr - rstr_iter_begin(str);
+        ptrdiff_t n = endptr - rstr_iter_begin(*str);
         for(ptrdiff_t i = 0; i < n; ++i) {
             rstr_pop_front(str, 0);
         }
@@ -526,20 +543,20 @@ ErrImplStatic static_json_parse_bool(Json *json, RStr *str, JsonOptions *options
     ASSERT_ARG(options);
     RStr t = RSTR("true");
     RStr f = RSTR("false");
-    if(rstr_length(str) >= rstr_length(&t) && !rstr_cmp(&RSTR_IE(*str, rstr_length(&t)), &t)) {
+    if(rstr_length(*str) >= rstr_length(t) && !rstr_cmp(RSTR_IE(*str, rstr_length(t)), t)) {
         json->id = JSON_BOOL;
         json->b = true;
         /////str->first += str_length(&t);
-        for(size_t i = 0; i < rstr_length(&t); ++i) {
+        for(size_t i = 0; i < rstr_length(t); ++i) {
             rstr_pop_front(str, 0);
         }
         return 0;
     }
-    if(rstr_length(str) >= rstr_length(&f) && !rstr_cmp(&RSTR_IE(*str, rstr_length(&f)), &f)) {
+    if(rstr_length(*str) >= rstr_length(f) && !rstr_cmp(RSTR_IE(*str, rstr_length(f)), f)) {
         json->id = JSON_BOOL;
         json->b = false;
         /////str->first += str_length(&f);
-        for(size_t i = 0; i < rstr_length(&f); ++i) {
+        for(size_t i = 0; i < rstr_length(f); ++i) {
             rstr_pop_front(str, 0);
         }
         return 0;
@@ -556,10 +573,10 @@ ErrImplStatic static_json_parse_null(Json *json, RStr *str, JsonOptions *options
     ASSERT_ARG(str);
     ASSERT_ARG(options);
     RStr n = RSTR("null");
-    if(rstr_length(str) >= rstr_length(&n) && !rstr_cmp(&RSTR_IE(*str, rstr_length(&n)), &n)) {
+    if(rstr_length(*str) >= rstr_length(n) && !rstr_cmp(RSTR_IE(*str, rstr_length(n)), n)) {
         json->id = JSON_NULL;
         /////str->first += str_length(&n);
-        for(size_t i = 0; i < rstr_length(&n); ++i) {
+        for(size_t i = 0; i < rstr_length(n); ++i) {
             rstr_pop_front(str, 0);
         }
         return 0;
@@ -622,11 +639,11 @@ ErrImpl json_parse(Json *json, Str *str, JsonOptions *options, Str *path)
         options = &opts;
     };
 
-    RStr parsing = str_rstr(str);
+    RStr parsing = str_rstr(*str);
 
     do {
         TRYC_P(options->parse.print_err, static_json_parse_val(json, &parsing, options));
-    } while(rstr_length(&parsing));
+    } while(rstr_length(parsing));
 
     return 0;
 error:
@@ -646,7 +663,7 @@ Json json_get(Json *json, JsonPath *path)
                 result = *tjson_get(&result.obj, &path->p[i].k);
             } break;
             case JSON_ARR: {
-                result = *vjson_get_at(&result.arr, path->p[i].i);
+                result = *vjson_get_at(result.arr, path->p[i].i);
             } break;
             default: {
                 result = (Json){.id = JSON_NONE};

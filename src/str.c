@@ -27,7 +27,7 @@ void str_pop_back_char(Str *str) //{{{
     bool next;
     do {
         next = false;
-        size_t len = str_length(str);
+        size_t len = str_length(*str);
         char c = 0;
         if(len) {
             str_pop_back(str, &c);
@@ -39,11 +39,11 @@ void str_pop_back_char(Str *str) //{{{
 void str_pop_back_word(Str *str) //{{{
 {
     ASSERT_ARG(str);
-    size_t len = str_length(str);
+    size_t len = str_length(*str);
     if(len) {
-        int ws = isspace(str_get_at(str, --len));
+        int ws = isspace(str_get_at(*str, --len));
         while(len) {
-            char c = str_get_at(str, --len);
+            char c = str_get_at(*str, --len);
             int wsI = isspace(c);
             if(ws && !wsI) { ++len; break; }
             if(!ws && wsI) { ++len; break; }
@@ -83,8 +83,7 @@ void str_trim(Str *str) //{{{
 
 // pseudo directory {{{
 
-void str_cstr(const Str *str, char *cstr, size_t len) {
-    ASSERT_ARG(str);
+void str_cstr(const Str str, char *cstr, size_t len) {
     ASSERT_ARG(cstr);
     cstr[0] = 0;
     snprintf(cstr, len, "%.*s", STR_F(str));
@@ -122,7 +121,7 @@ inline int str_fmt_va(Str *str, const char *format, va_list argp) //{{{
     }
     return 0;
 error:
-    ERR_PRINTF("failed formatting string: [%.*s] with format [%s]\n", STR_F(str), format);
+    ERR_PRINTF("failed formatting string: [%.*s] with format [%s]\n", STR_F(*str), format);
     return -1;
 } //}}}
 
@@ -141,18 +140,18 @@ int str_fmt(Str *str, const char *format, ...) //{{{
 } //}}}
 
 #define IMPL_STR_GET_EXT(A, N) \
-    RStr A##_get_ext(const N *str) { \
+    RStr A##_get_ext(const N str) { \
         ASSERT_ARG(str); \
         RStr result = A##_rstr(str); \
-        size_t len = rstr_length(&result); \
+        size_t len = rstr_length(result); \
         if(len) { \
-            size_t i = rstr_rch(&result, '.', 0); \
+            size_t i = rstr_rch(result, '.', 0); \
             if(i < len) { \
                 /* in case we have something like: file.dir/filename -> / is after . */ \
-                size_t j = rstr_rch(&result, PLATFORM_CH_SUBDIR, 0); \
+                size_t j = rstr_rch(result, PLATFORM_CH_SUBDIR, 0); \
                 if((j < len && j < i) || (j == len)) { \
                     /*TRYC(str_fmt(ext, "%.*s", (int)(len - i), str_iter_at(str, i)));*/ \
-                    result.first = str->first + i; \
+                    result.first = str.first + i; \
                     result.last = result.first + (len - i); \
                 } \
             } \
@@ -165,9 +164,8 @@ IMPL_STR_GET_EXT(rstr, RStr);
 
 
 
-ErrDecl str_fmt_noext(Str *ext, const Str *str) //{{{
+ErrDecl str_fmt_noext(Str *ext, const Str str) //{{{
 {
-    ASSERT_ARG(str);
     ASSERT_ARG(ext);
     size_t len = str_length(str);
     if(len) {
@@ -180,19 +178,19 @@ error:
 } //}}}
 
 #define IMPL_STR_GET_BASENAME(A, N) \
-    RStr A##_get_basename(const N *str) { /*{{{*/ \
+    RStr A##_get_basename(const N str) { /*{{{*/ \
         ASSERT_ARG(str); \
         RStr result = A##_rstr(str); \
-        size_t len = rstr_length(&result); \
+        size_t len = rstr_length(result); \
         if(len) { \
-            size_t iE = rstr_rch(&result, '.', 0); \
-            size_t i0 = rstr_rch(&result, '/', 0); \
+            size_t iE = rstr_rch(result, '.', 0); \
+            size_t i0 = rstr_rch(result, '/', 0); \
             if(i0 < len && PLATFORM_CH_SUBDIR != '/') { \
-                i0 = rstr_rch(&result, PLATFORM_CH_SUBDIR, 0); \
+                i0 = rstr_rch(result, PLATFORM_CH_SUBDIR, 0); \
             } \
             if(i0 < len) ++i0; \
             else if(i0 >= len) i0 = 0; \
-            result.first = str->first + i0; \
+            result.first = str.first + i0; \
             result.last = result.first + (iE - i0); \
             /*TRYC(str_fmt(basename, "%.*s", (int)(iE - i0), str_iter_at(str, i0)));*/ \
         } \
@@ -203,12 +201,11 @@ IMPL_STR_GET_BASENAME(str, Str);
 IMPL_STR_GET_BASENAME(rstr, RStr);
 
 // TODO: what if up is larger than the directory string? what should be returned then??
-ErrDecl str_fmt_dir(Str *dir, const Str *str, size_t up) //{{{
+ErrDecl str_fmt_dir(Str *dir, const Str str, size_t up) //{{{
 {
-    ASSERT_ARG(str);
     ASSERT_ARG(dir);
     size_t len = str_length(str);
-    size_t len_dir = str_length(dir);
+    size_t len_dir = str_length(*dir);
     if(len) {
         size_t i = str_rch(str, '/', up);
         if(i < len) {
@@ -221,7 +218,7 @@ ErrDecl str_fmt_dir(Str *dir, const Str *str, size_t up) //{{{
             }
         }
     }
-    if(len_dir == str_length(dir)) {
+    if(len_dir == str_length(*dir)) {
         TRYC(str_fmt(dir, "."));
     }
     return 0;
@@ -230,18 +227,18 @@ error:
 } //}}}
 
 #define IMPL_STR_GET_NODIR(A, N) /*{{{*/ \
-    RStr A##_get_nodir(const N *str) { \
+    RStr A##_get_nodir(const N str) { \
         ASSERT_ARG(str); \
         RStr result = A##_rstr(str); \
-        size_t len = rstr_length(&result); \
+        size_t len = rstr_length(result); \
         if(len) { \
-            size_t i0 = rstr_rch(&result, '/', 0); \
+            size_t i0 = rstr_rch(result, '/', 0); \
             if(i0 < len && PLATFORM_CH_SUBDIR != '/') { \
-                i0 = rstr_rch(&result, PLATFORM_CH_SUBDIR, 0); \
+                i0 = rstr_rch(result, PLATFORM_CH_SUBDIR, 0); \
             } \
             if(i0 < len) ++i0; \
             else if(i0 >= len) i0 = 0; \
-            result.first = str->first + i0; \
+            result.first = str.first + i0; \
         } \
         return result; \
     } /*}}}*/
@@ -249,9 +246,8 @@ error:
 IMPL_STR_GET_NODIR(str, Str);
 IMPL_STR_GET_NODIR(rstr, RStr);
 
-ErrDecl str_fmt_nodir(Str *nodir, const Str *str) //{{{
+ErrDecl str_fmt_nodir(Str *nodir, const Str str) //{{{
 {
-    ASSERT_ARG(str);
     ASSERT_ARG(nodir);
     size_t len = str_length(str);
     if(len) {
@@ -290,9 +286,9 @@ error: ERR_CLEAN;
 void str_remove_trailing_ch(Str *str, char ch, char ch_escape) //{{{
 {
     ASSERT_ARG(str);
-    while(str_length(str) && str_get_back(str) == ch) {
-        if(str_length(str) >= 2) {
-            if(str_get_at(str, str_length(str) - 2) == ch_escape) {
+    while(str_length(*str) && str_get_back(*str) == ch) {
+        if(str_length(*str) >= 2) {
+            if(str_get_at(*str, str_length(*str) - 2) == ch_escape) {
                 break;
             }
         }
@@ -300,36 +296,34 @@ void str_remove_trailing_ch(Str *str, char ch, char ch_escape) //{{{
     }
 } //}}}
 
-ErrDecl str_expand_path(Str *path, const Str *base, const Str *home) // TODO: move into platform.c ... {{{
+ErrDecl str_expand_path(Str *path, const Str base, const Str home) // TODO: move into platform.c ... {{{
 {
     ASSERT_ARG(path);
-    ASSERT_ARG(base);
-    ASSERT_ARG(home);
     int err = 0;
     Str result = {0};
     Str temp = {0};
-    Str base2 = *base;
+    Str base2 = base;
     str_trim(path);
 #if defined(PLATFORM_WINDOWS)
     ABORT("not yet implemented in windows");
 #else
-    if(!str_length(path)) return 0;
-    if(str_length(path) >= 2 && !str_cmp(&STR_IE(*path, 2), &STR("~/"))) {
-        TRYC(str_fmt(&result, "%.*s%.*s", STR_F(home), STR_F(&STR_I0(*path, 1))));
+    if(!str_length(*path)) return 0;
+    if(str_length(*path) >= 2 && !str_cmp(STR_IE(*path, 2), STR("~/"))) {
+        TRYC(str_fmt(&result, "%.*s%.*s", STR_F(home), STR_F(STR_I0(*path, 1))));
         /* assign result */
         str_clear(path);
         temp = *path;
         *path = result;
         result = temp;
-    } else if(str_get_front(path) != PLATFORM_CH_SUBDIR) {
-        if(!file_is_dir(&base2)) {
+    } else if(str_get_front(*path) != PLATFORM_CH_SUBDIR) {
+        if(!file_is_dir(base2)) {
             platform_path_up(&base2);
         }
         //printff("%.*s .. %.*s", STR_F(&base2), STR_F(path));
-        if(str_length(&base2)) {
-            TRYC(str_fmt(&result, "%.*s%c%.*s", STR_F(&base2), PLATFORM_CH_SUBDIR, STR_F(path)));
+        if(str_length(base2)) {
+            TRYC(str_fmt(&result, "%.*s%c%.*s", STR_F(base2), PLATFORM_CH_SUBDIR, STR_F(*path)));
         } else {
-            TRYC(str_fmt(&result, "%.*s", STR_F(path)));
+            TRYC(str_fmt(&result, "%.*s", STR_F(*path)));
         }
         /* assign result */
         str_clear(path);
@@ -339,16 +333,16 @@ ErrDecl str_expand_path(Str *path, const Str *base, const Str *home) // TODO: mo
     }
     /* remove any and all dot-dot's -> '..' */
     for(;;) {
-        size_t n = str_find_substring(path, &STR(".."));
-        if(n >= str_length(path)) break;
+        size_t n = str_find_substring(*path, STR(".."));
+        if(n >= str_length(*path)) break;
         Str prepend = *path;
         Str append = *path;
         prepend.last = prepend.first + n;
-        append.first = append.first + n + str_length(&STR(".."));
+        append.first = append.first + n + str_length(STR(".."));
         str_remove_trailing_ch(&prepend, PLATFORM_CH_SUBDIR, '\\');
         platform_path_up(&prepend);
         str_clear(&result);
-        TRYC(str_fmt(&result, "%.*s%.*s", STR_F(&prepend), STR_F(&append)));
+        TRYC(str_fmt(&result, "%.*s%.*s", STR_F(prepend), STR_F(append)));
         temp = *path;
         *path = result;
         result = temp;
@@ -366,8 +360,8 @@ ErrDecl str_fmt_line(Str *line, const Str *str, size_t i0, size_t *iE) { //{{{
     ASSERT_ARG(str);
     Str fake = *str;
     fake.first += i0;
-    size_t i = str_ch(&fake, '\n', 0);
-    TRYC(str_fmt(line, "%.*s", (int)i, str_iter_begin(&fake)));
+    size_t i = str_ch(fake, '\n', 0);
+    TRYC(str_fmt(line, "%.*s", (int)i, str_iter_begin(fake)));
     if(iE) *iE += i + 1; // TODO do I have to/should I check for if i<str_length(str)???
     return 0;
 error:
@@ -393,9 +387,8 @@ void str_get_line(const Str *str, size_t *i0, size_t *iE) {/*{{{*/
 }/*}}}*/
 #endif
 
-ErrDecl str_fmt_fgbg(Str *out, const Str *text, const V3u8 fg, const V3u8 bg, bool bold, bool italic, bool underline) {
+ErrDecl str_fmt_fgbg(Str *out, const Str text, const V3u8 fg, const V3u8 bg, bool bold, bool italic, bool underline) {
     ASSERT_ARG(out);
-    ASSERT_ARG(text);
     bool do_fmt = ((fg || bg || bold || italic || underline));
     if(!do_fmt) {
         TRYC(str_fmt(out, "%.*s", STR_F(text)));
@@ -423,7 +416,7 @@ error:
 // comparing stuff {{{
 
 #define IMPL_STR_CMP(A, A1, N1, A2, N2) \
-    int A##_cmp(const N1 *a, const N2 *b) { /*{{{*/\
+    int A##_cmp(const N1 a, const N2 b) { /*{{{*/\
         ASSERT_ARG(a); \
         ASSERT_ARG(b); \
         size_t la = A1##_length(a); \
@@ -438,7 +431,7 @@ IMPL_STR_CMP(rstr, rstr, RStr, rstr, RStr);
 IMPL_STR_CMP(str_rstr, str, Str, rstr, RStr);
 
 #define IMPL_STR_CMP_SORTABLE(A, A1, N1, A2, N2) \
-    int A##_cmp_sortable(const N1 *a, const N2 *b) { /*{{{*/\
+    int A##_cmp_sortable(const N1 a, const N2 b) { /*{{{*/\
         ASSERT_ARG(a); \
         ASSERT_ARG(b); \
         size_t la = A1##_length(a); \
@@ -461,9 +454,7 @@ IMPL_STR_CMP_SORTABLE(str, str, Str, str, Str);
 IMPL_STR_CMP_SORTABLE(rstr, rstr, RStr, rstr, RStr);
 IMPL_STR_CMP_SORTABLE(str_rstr, str, Str, rstr, RStr);
 
-int str_cmp_ci(const Str *a, const Str *b) {/*{{{*/
-    ASSERT_ARG(a);
-    ASSERT_ARG(b);
+int str_cmp_ci(const Str a, const Str b) {/*{{{*/
     if(str_length(a) != str_length(b)) return -1;
     for (size_t i = 0; i < str_length(a); ++i) {
         int d = tolower(str_get_at(a, i)) - tolower(str_get_at(b, i));
@@ -472,9 +463,7 @@ int str_cmp_ci(const Str *a, const Str *b) {/*{{{*/
     return 0;
 }/*}}}*/
 
-int str_cmp_esci(const Str *a, const Str *b) {/*{{{*/
-    ASSERT_ARG(a);
-    ASSERT_ARG(b);
+int str_cmp_esci(const Str a, const Str b) {/*{{{*/
 #if 1
     size_t ia = 0, ioff = 0; /* I am abusing this as signed even tho it's unsigned - trust me it'll 100% work! */
     int sa = 0, sb = 0;
@@ -558,21 +547,18 @@ int str_cmp_esci(const Str *a, const Str *b) {/*{{{*/
     return 0;
 }/*}}}*/
 
-int str_cmp_ci_any(const Str *a, const Str **b, size_t len) {/*{{{*/
-    ASSERT_ARG(a);
+int str_cmp_ci_any(const Str a, const Str *b, size_t len) {/*{{{*/
     ASSERT_ARG(b);
     for (size_t i = 0; i < len; ++i) {
-        const Str *bb = b[i];
+        const Str bb = b[i];
         int result = str_cmp_ci(a, bb);
         if(!result) return 0;
     }
     return -1;
 }/*}}}*/
 
-inline size_t str_count_overlap(const Str *restrict a, const Str *restrict b, bool ignorecase) //{{{
+inline size_t str_count_overlap(const Str a, const Str b, bool ignorecase) //{{{
 {
-    ASSERT_ARG(a);
-    ASSERT_ARG(b);
     size_t overlap = 0;
     size_t len = str_length(a) > str_length(b) ? str_length(b) : str_length(a);
     if(!ignorecase) {
@@ -593,21 +579,19 @@ inline size_t str_count_overlap(const Str *restrict a, const Str *restrict b, bo
     return overlap;
 } //}}}
 
-inline size_t str_find_substring(const Str *restrict str, const Str *restrict sub) //{{{
+inline size_t str_find_substring(const Str str, const Str sub) //{{{
 {
-    ASSERT_ARG(str);
-    ASSERT_ARG(sub);
     /* basic checks */
     if(!str_length(sub)) return 0;
     if(str_length(sub) > str_length(str)) {
         return str_length(str);
     }
     /* store original indices */
-    Str ref = *str;
+    Str ref = str;
     /* check for substring */
     size_t i = 0;
-    while(str_length(sub) <= str_length(&ref)) {
-        size_t overlap = str_count_overlap(&ref, sub, true);
+    while(str_length(sub) <= str_length(ref)) {
+        size_t overlap = str_count_overlap(ref, sub, true);
         if(overlap == str_length(sub)) {
             return i;
         } else {
@@ -619,9 +603,7 @@ inline size_t str_find_substring(const Str *restrict str, const Str *restrict su
     return str_length(str);
 } //}}}
 
-size_t str_find_any(const Str *str, const Str *any) { //{{{
-    ASSERT_ARG(str);
-    ASSERT_ARG(any);
+size_t str_find_any(const Str str, const Str any) { //{{{
     size_t result = str_length(str);
     for(size_t i = 0; i < str_length(any); ++i) {
         size_t temp = str_ch(str, str_get_at(any, i), 0);
@@ -630,9 +612,7 @@ size_t str_find_any(const Str *str, const Str *any) { //{{{
     return result;
 } //}}}
 
-size_t str_find_nany(const Str *str, const Str *any) { //{{{
-    ASSERT_ARG(str);
-    ASSERT_ARG(any);
+size_t str_find_nany(const Str str, const Str any) { //{{{
     for(size_t i = 0; i < str_length(str); ++i) {
         size_t temp = str_ch(any, str_get_at(str, i), 0);
         if(temp >= str_length(any)) return i;
@@ -640,8 +620,7 @@ size_t str_find_nany(const Str *str, const Str *any) { //{{{
     return str_length(str);
 } //}}}
 
-size_t str_nch(const Str *str, char ch, size_t n) { //{{{
-    ASSERT_ARG(str);
+size_t str_nch(const Str str, char ch, size_t n) { //{{{
     size_t ni = 0;
     for(size_t i = 0; i < str_length(str); ++i) {
         char c = str_get_at(str, i);
@@ -653,8 +632,7 @@ size_t str_nch(const Str *str, char ch, size_t n) { //{{{
     return str_length(str);
 } //}}}
 
-size_t str_ch(const Str *str, char ch, size_t n) { //{{{
-    ASSERT_ARG(str);
+size_t str_ch(const Str str, char ch, size_t n) { //{{{
     size_t ni = 0;
     for(size_t i = 0; i < str_length(str); ++i) {
         char c = str_get_at(str, i);
@@ -666,15 +644,13 @@ size_t str_ch(const Str *str, char ch, size_t n) { //{{{
     return str_length(str);
 } //}}}
 
-size_t str_ch_from(const Str *str, char ch, size_t n, size_t from) {/*{{{*/
-    ASSERT_ARG(str);
+size_t str_ch_from(const Str str, char ch, size_t n, size_t from) {/*{{{*/
     Str search = STR_LL(str_iter_at(str, from), str_length(str) - from);
-    size_t result = str_ch(&search, ch, n) + from;
+    size_t result = str_ch(search, ch, n) + from;
     return result;
 }/*}}}*/
 
-size_t str_ch_pair(const Str *str, char c1) { //{{{
-    ASSERT_ARG(str);
+size_t str_ch_pair(const Str str, char c1) { //{{{
     if(!str_length(str)) return str_length(str);
     size_t level = 1;
     char c0 = str_get_at(str, 0);
@@ -687,8 +663,7 @@ size_t str_ch_pair(const Str *str, char c1) { //{{{
     return str_length(str);
 } //}}}
 
-size_t str_find_ws(const Str *str) { //{{{
-    ASSERT_ARG(str);
+size_t str_find_ws(const Str str) { //{{{
     for(size_t i = 0; i < str_length(str); ++i) {
         char c = str_get_at(str, i);
         if(isspace(c)) return i;
@@ -696,8 +671,7 @@ size_t str_find_ws(const Str *str) { //{{{
     return str_length(str);
 } //}}}
 
-size_t str_find_nws(const Str *str) { //{{{
-    ASSERT_ARG(str);
+size_t str_find_nws(const Str str) { //{{{
     for(size_t i = 0; i < str_length(str); ++i) {
         char c = str_get_at(str, i);
         if(!isspace(c)) return i;
@@ -706,8 +680,7 @@ size_t str_find_nws(const Str *str) { //{{{
 } //}}}
 
 // find reverse non-whitespace
-size_t str_find_rnws(const Str *str) { //{{{
-    ASSERT_ARG(str);
+size_t str_find_rnws(const Str str) { //{{{
     for(size_t i = str_length(str); i > 0; --i) {
         char c = str_get_at(str, i - 1);
         if(!isspace(c)) return i - 1;
@@ -716,8 +689,7 @@ size_t str_find_rnws(const Str *str) { //{{{
 } //}}}
 
 #define IMPL_STR_RCH(A, N) \
-    size_t A##_rch(const N *str, char ch, size_t n) { /*{{{*/ \
-        ASSERT_ARG(str); \
+    size_t A##_rch(const N str, char ch, size_t n) { /*{{{*/ \
         size_t ni = 0; \
         for(size_t i = A##_length(str); i > 0; --i) { \
             char c = A##_get_at(str, i - 1); \
@@ -732,8 +704,7 @@ size_t str_find_rnws(const Str *str) { //{{{
 IMPL_STR_RCH(str, Str);
 IMPL_STR_RCH(rstr, RStr);
 
-size_t str_rnch(const Str *str, char ch, size_t n) { /*{{{*/
-    ASSERT_ARG(str);
+size_t str_rnch(const Str str, char ch, size_t n) { /*{{{*/
     size_t ni = 0;
     for(size_t i = str_length(str); i > 0; --i) {
         char c = str_get_at(str, i - 1);
@@ -745,10 +716,9 @@ size_t str_rnch(const Str *str, char ch, size_t n) { /*{{{*/
     return 0; //str_length(str);
 } /*}}}*/
 
-size_t str_count_ch(const Str *str, char ch) {/*{{{*/
-    ASSERT_ARG(str);
+size_t str_count_ch(const Str str, char ch) {/*{{{*/
     size_t result = 0;
-    if(str->first < str->last) { /* TODO: add this to basically every string utility function :) */
+    if(str.first < str.last) { /* TODO: add this to basically every string utility function :) */
         for(size_t i = 0; i < str_length(str); ++i) {
             char c = str_get_at(str, i);
             if(c == ch) ++result;
@@ -757,8 +727,7 @@ size_t str_count_ch(const Str *str, char ch) {/*{{{*/
     return result;
 }/*}}}*/
 
-size_t str_irch(const Str *str, size_t iE, char ch, size_t n) { //{{{
-    ASSERT_ARG(str);
+size_t str_irch(const Str str, size_t iE, char ch, size_t n) { //{{{
     if(iE <= str_length(str)) {
         size_t ni = 0;
         for(size_t i = iE; i > 0; --i) {
@@ -772,9 +741,8 @@ size_t str_irch(const Str *str, size_t iE, char ch, size_t n) { //{{{
     return str_length(str);
 } //}}}
 
-size_t str_hash(const Str *a) //{{{
+size_t str_hash(const Str a) //{{{
 {
-    ASSERT_ARG(a);
     size_t hash = 5381;
     size_t i = 0;
     while(i < str_length(a)) {
@@ -784,9 +752,8 @@ size_t str_hash(const Str *a) //{{{
     return hash;
 } //}}}
 
-size_t str_hash_ci(const Str *a) //{{{
+size_t str_hash_ci(const Str a) //{{{
 {
-    ASSERT_ARG(a);
     size_t hash = 5381;
     size_t i = 0;
     while(i < str_length(a)) {
@@ -796,8 +763,7 @@ size_t str_hash_ci(const Str *a) //{{{
     return hash;
 } //}}}
 
-size_t str_hash_esci(const Str *a) {/*{{{*/
-    ASSERT_ARG(a);
+size_t str_hash_esci(const Str a) {/*{{{*/
     size_t hash = 5381;
     size_t i = 0;
     int stage = 0;
@@ -830,10 +796,9 @@ Str str_splice(Str *to_splice, Str *prev_splice, char sep) {/*{{{*/
 }/*}}}*/
 #endif
 
-ErrDecl str_remove_escapes(Str *restrict out, Str *restrict in)
+ErrDecl str_remove_escapes(Str *restrict out, Str in)
 {
     ASSERT(out, ERR_NULL_ARG);
-    ASSERT(in, ERR_NULL_ARG);
     bool skip = 0;
     size_t iX = 0;
     char c_last = 0;

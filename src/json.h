@@ -3,8 +3,7 @@
 #include "err.h"
 #include "str.h"
 #include "vec.h"
-#include "lutd.h"
-#include "luts.h"
+#include "lut.h"
 #include "vstr.h"
 
 typedef enum {
@@ -21,7 +20,7 @@ typedef enum {
 typedef struct Json Json;
 
 VEC_INCLUDE(VJson, vjson, Json, BY_REF, BASE);
-LUTS_INCLUDE(TJson, tjson, Str, BY_REF, Json, BY_REF);
+LUT_INCLUDE(TJson, tjson, Str, BY_REF, Json, BY_REF);
 
 typedef struct Json {
     JsonList id;
@@ -70,7 +69,7 @@ void json_sort(Json *json);
 void vjson_sort(VJson *vjson);
 
 #define ERR_vjson_fmt(...) "failed formatting json vector"
-ErrDecl vjson_fmt(VJson *vjson, Str *str, JsonOptions *options);
+ErrDecl vjson_fmt(VJson vjson, Str *str, JsonOptions *options);
 #define ERR_tjson_fmt(...) "failed formatting json object"
 ErrDecl tjson_fmt(TJson *tjson, Str *str, JsonOptions *options);
 

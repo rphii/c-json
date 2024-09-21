@@ -34,16 +34,16 @@ void list_not_downloaded(void)
         str_clear(&filename);
         TRYC(str_fmt(&filename, "/home/rphii/dev/c/wallhaven-tags/favorites/fav_%zu.json", i));
         //printff("[%zu] %.*s", i, STR_F(&filename));
-        TRYC(file_str_read(&filename, &in));
+        TRYC(file_str_read(filename, &in));
         TRYC(json_parse(&json, &in, 0, 0));
 
         Json array = json_get(&json, &(JsonPath){ .n = 1, .p = (JsonPathlet[]){
                 (JsonPathlet){.k = STR("data")},
             }});
 
-        for(size_t i = 0; i < vjson_length(&array.arr); ++i) {
+        for(size_t i = 0; i < vjson_length(array.arr); ++i) {
             //printff("%zu", id.id);
-            Json *item = vjson_get_at(&array.arr, i);
+            Json *item = vjson_get_at(array.arr, i);
             Json id = json_get(item, &(JsonPath){ .n = 1, .p = (JsonPathlet[]){
                     (JsonPathlet){.k = STR("id")},
                 }});
@@ -56,9 +56,9 @@ void list_not_downloaded(void)
             //printf(">>>%.*s\n", STR_F(&x));
             //str_free(&x);
             str_zero(&val.str);
-            TRYC(str_fmt(&val.str, "%.*s", STR_F(&url.str)));
+            TRYC(str_fmt(&val.str, "%.*s", STR_F(url.str)));
             Str key = {0};
-            TRYC(str_fmt(&key, "%.*s", STR_F(&id.str)));
+            TRYC(str_fmt(&key, "%.*s", STR_F(id.str)));
             //tjson_set(&
 
             /*Json url = json_get(&json, &(JsonPath){ .n = 2, .p = (JsonPathlet[]){
@@ -76,17 +76,17 @@ void list_not_downloaded(void)
 
     /* go over shit */
     VStr files = {0};
-    TRYC(file_dir_read(&STR("/home/rphii/Images/Wallhaven/totag"), &files));
+    TRYC(file_dir_read(STR("/home/rphii/Images/Wallhaven/totag"), &files));
     Str basename = {0};
-    for(size_t i = 0; i < vstr_length(&files); ++i) {
-        Str *file = vstr_get_at(&files, i);
+    for(size_t i = 0; i < vstr_length(files); ++i) {
+        Str *file = vstr_get_at(files, i);
         str_free(&basename);
-        TRYC(rstr_extend_back(&basename, str_get_basename(file)));
+        TRYC(rstr_extend_back(&basename, str_get_basename(*file)));
         Str cmp = STR("wallhaven-");
-        if(str_cmp(&STR_IE(basename, str_length(&cmp)), &cmp)) {
+        if(str_cmp(STR_IE(basename, str_length(cmp)), cmp)) {
             continue;
         }
-        Str id = STR_I0(basename, str_length(&cmp));
+        Str id = STR_I0(basename, str_length(cmp));
         Json *have = tjson_get(&ids.obj, &id);
         if(!have) {
             //printff("%u keep : %.*s %p", ids.id, STR_F(&id), have);
@@ -103,13 +103,13 @@ void list_not_downloaded(void)
 
     //TRYC(json_fmt(&ids, &out, 0, 0));
     //printf("%.*s\n", STR_F(&out));
-    for(size_t i = 0; i < LUTS_CAP(ids.obj.width); ++i) {
+    for(size_t i = 0; i < LUT_CAP(ids.obj.width); ++i) {
         TJsonItem *item = ids.obj.buckets[i];
         if(!item) continue;
         Json *val = item->val;
         if(!val) continue;
-        if(item->hash == LUTS_EMPTY) continue;
-        printf("%.*s\n", STR_F(&val->str));
+        if(item->hash == LUT_EMPTY) continue;
+        printf("%.*s\n", STR_F(val->str));
     }
 
 error:
@@ -120,15 +120,15 @@ error:
 
 ErrDecl list_tags(Str *filename, void *args)
 {
-    RStr basename = str_get_basename(filename);
+    RStr basename = str_get_basename(*filename);
     RStr begin = RSTR("wallhaven-");
-    if(rstr_length(&basename) < rstr_length(&begin)) return 0;
+    if(rstr_length(basename) < rstr_length(begin)) return 0;
 
-    RStr starts = RSTR_IE(basename, rstr_length(&begin));
-    if(rstr_cmp(&starts, &begin)) return 0;
+    RStr starts = RSTR_IE(basename, rstr_length(begin));
+    if(rstr_cmp(starts, begin)) return 0;
 
-    RStr ext = str_get_ext(filename);
-    if(rstr_cmp(&ext, &RSTR(".json"))) return 0;
+    RStr ext = str_get_ext(*filename);
+    if(rstr_cmp(ext, RSTR(".json"))) return 0;
 
     ListTags *lt = args;
     Str *out = &lt->out;
@@ -140,7 +140,7 @@ ErrDecl list_tags(Str *filename, void *args)
         //Str *filename = &files[i];
         //printff("[%zu] parsing '%.*s'", i, STR_F(filename));
         //Str fname = STR_LL(filename.s, rstr_length(&filename));
-        TRYC(file_str_read(filename, &in));
+        TRYC(file_str_read(*filename, &in));
         Json json = {0};
         TRYC(json_parse(&json, &in, 0, 0));
 
@@ -154,18 +154,18 @@ ErrDecl list_tags(Str *filename, void *args)
                 (JsonPathlet){.k = STR("tags")},
             }});
 
-        TRYC(rstr_extend_back(out, str_get_nodir(&name.str)));
+        TRYC(rstr_extend_back(out, str_get_nodir(name.str)));
 
-        for(size_t i = 0; i < vjson_length(&array.arr); ++i) {
+        for(size_t i = 0; i < vjson_length(array.arr); ++i) {
             TRYC(str_fmt(out, ","));
-            Json *tag = vjson_get_at(&array.arr, i);
+            Json *tag = vjson_get_at(array.arr, i);
             Json name = json_get(tag, &(JsonPath){.n = 1, .p = (JsonPathlet[]){(JsonPathlet){.k = STR("name")}}});
             Json purity = json_get(tag, &(JsonPath){.n = 1, .p = (JsonPathlet[]){(JsonPathlet){.k = STR("purity")}}});
             Json category = json_get(tag, &(JsonPath){.n = 1, .p = (JsonPathlet[]){(JsonPathlet){.k = STR("category")}}});
-            if(str_cmp(&purity.str, &STR("sfw"))) {
-                TRYC(str_fmt(out, "%.*s:%.*s:%.*s", STR_F(&purity.str), STR_F(&category.str), STR_F(&name.str)));
+            if(str_cmp(purity.str, STR("sfw"))) {
+                TRYC(str_fmt(out, "%.*s:%.*s:%.*s", STR_F(purity.str), STR_F(category.str), STR_F(name.str)));
             } else {
-                TRYC(str_fmt(out, "%.*s:%.*s", STR_F(&category.str), STR_F(&name.str)));
+                TRYC(str_fmt(out, "%.*s:%.*s", STR_F(category.str), STR_F(name.str)));
             }
         }
 
@@ -190,7 +190,7 @@ ErrDecl list_urls(Str *filename, Str *in, Str *out, size_t *index)
     int err = 0;
 
     str_clear(in);
-    TRYC(file_str_read(filename, in));
+    TRYC(file_str_read(*filename, in));
     Json json = {0};
     TRYC(json_parse(&json, in, 0, 0));
 
@@ -202,7 +202,7 @@ ErrDecl list_urls(Str *filename, Str *in, Str *out, size_t *index)
     };
 
     Json data = json_get(&json, &path_data);
-    for(size_t i = 0; i < vjson_length(&data.arr); ++i) {
+    for(size_t i = 0; i < vjson_length(data.arr); ++i) {
 
         JsonPath path_url = (JsonPath){ .n = 2, .p = (JsonPathlet []){
                     (JsonPathlet){.i = i},
@@ -214,7 +214,7 @@ ErrDecl list_urls(Str *filename, Str *in, Str *out, size_t *index)
         //TRYC(json_fmt(&portion, &out, 0, 0));
         //TRYC(str_fmt(out, "[%zu] ", (*index)++));
         //TRYC(json_fmt(&url, out, 0, 0));
-        TRYC(str_fmt(out, "    '%.*s'", STR_F(&url.str)));
+        TRYC(str_fmt(out, "    '%.*s'", STR_F(url.str)));
         TRYC(str_fmt(out, "\n"));
 
     }
@@ -278,16 +278,17 @@ int main(int argc, const char **argv)
     str_free(&lines);
 #endif
 
-#if 0
+#if 1
     //Str filename = STR("../data/sample.json");
     //Str filename = STR("../data/512KB.json");
     //Str filename = STR("../data/5MB-min.json");
     //Str filename = STR("../testfiles/instruments.json");
 
     Str files[] = {
+        STR("../../c-thru/example.json"),
         //STR("../data/missing-colon.json"),
         //STR("../data/test.json"),
-        STR("../data/5MB-min.json"),
+        //STR("../data/5MB-min.json"),
         //STR("../testfiles/apache_builds.json"),
         //STR("../testfiles/canada.json"),
         //STR("../testfiles/citm_catalog.json"),
@@ -318,14 +319,16 @@ int main(int argc, const char **argv)
     
     for(size_t i = 0; i < SIZE_ARRAY(files); ++i) {
         str_clear(&in);
-        printff("%.*s", STR_F(&files[i]));
-        TRYC(file_str_read(&files[i], &in));
+        printff("%.*s", STR_F(files[i]));
+        TRYC(file_str_read(files[i], &in));
+        JsonOptions ops = {0};
+        ops.parse.print_err = true;
         Json json = {0};
-        TRYC(json_parse(&json, &in, 0, 0));
+        TRYC(json_parse(&json, &in, &ops, 0));
 
         str_clear(&out);
         TRYC(json_fmt(&json, &out, 0, 0));
-        printf("%.*s\n", STR_F(&out));
+        printf("%.*s\n", STR_F(out));
 
         json_free(&json);
 
@@ -367,6 +370,7 @@ int main(int argc, const char **argv)
 
 #endif
 
+#if 0
     str_clear(&out);
     VStr dirfiles = {0};
     Str input = STR("/home/rphii/dev/c/wallhaven-tags/");
@@ -383,6 +387,7 @@ int main(int argc, const char **argv)
     str_clear(&out);
 
     //list_not_downloaded();
+#endif
 #if 0
     Str filename = {0};
     size_t index = 0;

@@ -81,14 +81,14 @@ void platform_path_up(Str *path) //{{{
 #else
     size_t n = 0;
     for(;;) {
-        n = str_rch(&path2, PLATFORM_CH_SUBDIR, 0);
-        if(n == 0 || n >= str_length(&path2)) {
+        n = str_rch(path2, PLATFORM_CH_SUBDIR, 0);
+        if(n == 0 || n >= str_length(path2)) {
             path2.last = path2.first;
             break;
         }
         path2.last = path2.first + n - 1;
         str_remove_trailing_ch(&path2, PLATFORM_CH_SUBDIR, '\\');
-        if(str_length(&path2) && str_get_back(&path2) == PLATFORM_CH_SUBDIR) {
+        if(str_length(path2) && str_get_back(path2) == PLATFORM_CH_SUBDIR) {
             --path2.last;
         } else {
             path2.last = path2.first + n;
