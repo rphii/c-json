@@ -141,7 +141,6 @@ int str_fmt(Str *str, const char *format, ...) //{{{
 
 #define IMPL_STR_GET_EXT(A, N) \
     RStr A##_get_ext(const N str) { \
-        ASSERT_ARG(str); \
         RStr result = A##_rstr(str); \
         size_t len = rstr_length(result); \
         if(len) { \
@@ -179,7 +178,6 @@ error:
 
 #define IMPL_STR_GET_BASENAME(A, N) \
     RStr A##_get_basename(const N str) { /*{{{*/ \
-        ASSERT_ARG(str); \
         RStr result = A##_rstr(str); \
         size_t len = rstr_length(result); \
         if(len) { \
@@ -228,7 +226,6 @@ error:
 
 #define IMPL_STR_GET_NODIR(A, N) /*{{{*/ \
     RStr A##_get_nodir(const N str) { \
-        ASSERT_ARG(str); \
         RStr result = A##_rstr(str); \
         size_t len = rstr_length(result); \
         if(len) { \
@@ -417,8 +414,6 @@ error:
 
 #define IMPL_STR_CMP(A, A1, N1, A2, N2) \
     int A##_cmp(const N1 a, const N2 b) { /*{{{*/\
-        ASSERT_ARG(a); \
-        ASSERT_ARG(b); \
         size_t la = A1##_length(a); \
         size_t lb = A2##_length(b); \
         if(la != lb) return -1; \
@@ -432,8 +427,6 @@ IMPL_STR_CMP(str_rstr, str, Str, rstr, RStr);
 
 #define IMPL_STR_CMP_SORTABLE(A, A1, N1, A2, N2) \
     int A##_cmp_sortable(const N1 a, const N2 b) { /*{{{*/\
-        ASSERT_ARG(a); \
-        ASSERT_ARG(b); \
         size_t la = A1##_length(a); \
         size_t lb = A2##_length(b); \
         int result = -1; \

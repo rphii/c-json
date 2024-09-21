@@ -21,6 +21,7 @@ void str_free2(Str s) {
 
 LUT_IMPLEMENT(TJson, tjson, Str, BY_REF, Json, BY_REF, str_hash2, str_cmp2, str_free, json_free);
 
+ErrDecl json_fmt_str(Str *out, JsonOptions *options, Str str);
 
 #define ERR_static_json_parse_val(...) "failed parsing json value"
 ErrImplStatic static_json_parse_val(Json *json, RStr *str, JsonOptions *options);
